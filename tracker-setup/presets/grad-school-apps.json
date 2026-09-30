@@ -1,0 +1,32 @@
+{
+  "project_name": "Grad School Applications",
+  "app_display_name": "AdmitTrack",
+  "tagline": "One decision at a time.",
+  "icon": "school",
+  "db_name": "grad_school_tracker",
+  "port": 8422,
+
+  "entity_singular": "application",
+  "entity_plural": "applications",
+  "primary_field": "school",
+  "primary_label": "School",
+  "secondary_field": "program",
+  "secondary_label": "Program",
+  "source_type_options": ["Self-applied", "Referral"],
+
+  "stages": ["Interested", "Applied", "Interview", "Admitted", "Rejected", "Withdrawn"],
+  "baseline_stage": "Applied",
+  "success_stage": "Admitted",
+  "closed_stages": ["Rejected", "Withdrawn"],
+
+  "has_value": false,
+
+  "has_category": true,
+  "category_label": "Program Type",
+  "category_field": "program_type",
+
+  "has_contact": false,
+  "has_scout_agent": false,
+
+  "config_dir_name": "grad_school_search"
+}

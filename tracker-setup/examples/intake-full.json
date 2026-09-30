@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "basics": {
+    "preferred_name": "Priya",
+    "job_finder": true,
+    "drafting": true
+  },
+  "what_you_want": {
+    "priorities": [
+      "stability",
+      "flexibility",
+      "pay"
+    ],
+    "tradeoff": "I'd take about 10% less pay for a company that won't lay people off every year.",
+    "pay_floor": "$115K base, flexible if equity is real",
+    "pay_other": [
+      "health",
+      "retirement",
+      "equity"
+    ],
+    "pay_notes": "My parents are on my health plan, so benefits matter as much as base.",
+    "balance": "No regular weekend on-call. Travel once a quarter is fine.",
+    "work_arrangements": [
+      "remote",
+      "hybrid"
+    ],
+    "locations": "Chicago, or remote within US time zones; 45 minutes max commute",
+    "company_size": [
+      "growing",
+      "large"
+    ],
+    "company_size_why": "I was laid off from a 30-person startup last year and my visa clock started the same day.",
+    "timeline": "About four months before savings get tight.",
+    "must_haves": [
+      "Works with real data, not just dashboards",
+      "A manager who has done analytics work"
+    ],
+    "dealbreakers": [
+      "Five days a week in the office",
+      "Ad-tech"
+    ]
+  },
+  "where_to_look": {
+    "titles": [
+      "Senior data analyst",
+      "Analytics engineer"
+    ],
+    "seniority": "Senior, or a strong mid-level role with a path up",
+    "industries_like": [
+      "Healthcare",
+      "Logistics"
+    ],
+    "industries_avoid": [
+      "Gambling"
+    ],
+    "companies_like": [
+      "Northwind Health"
+    ],
+    "companies_skip": [
+      "Initech"
+    ]
+  },
+  "job_finder": {
+    "sources": [
+      "company_boards",
+      "hn",
+      "web"
+    ],
+    "run_size": "light",
+    "pickiness": "strong_only",
+    "drafts": "strong_with_outreach",
+    "watch_companies": [
+      "Globex",
+      "Northwind Health"
+    ]
+  },
+  "about_you": {
+    "strengths": "I turn messy operational data into decisions people actually use. I'm the one who finds out why the numbers don't match.",
+    "links": [
+      "https://example.com/priya-portfolio"
+    ],
+    "voice_sample": "Hi Sam,\n\nI saw the analytics role on your team and wanted to reach out directly. I've spent four years cleaning up shipping data so ops leads could trust it.\n\nThanks,\nPriya"
+  },
+  "stories": [
+    {
+      "prompt": "saw_differently",
+      "title": "Reconciling the shipping numbers",
+      "notes": "Finance and ops had different on-time rates. I traced it to two definitions of \"delivered\" and got both teams to agree on one. Don't remember the exact % change, it was a lot."
+    },
+    {
+      "prompt": "beyond_the_ask",
+      "notes": "Built the first weekly metrics email; people still ask for it by name. Literal {{ braces }} and it's got an apostrophe."
+    },
+    {
+      "prompt": "not_as_planned",
+      "notes": "We launched a forecast that was wrong for two weeks."
+    }
+  ],
+  "work_authorization": {
+    "status": "h1b",
+    "authorized_until": "2027-02-15",
+    "needs": [
+      "h1b_transfer",
+      "green_card"
+    ],
+    "green_card_timing": "within_a_year",
+    "notes": "My spouse's H-4 depends on my status."
+  },
+  "risk": {
+    "comfort": "low",
+    "runway": "3_to_6_months",
+    "dependents": "yes",
+    "layoff_impact": "I'd have 60 days to find something or leave, with my spouse."
+  }
+}

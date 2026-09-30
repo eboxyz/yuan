@@ -1,0 +1,190 @@
+{% import "dashboard/_partials.j2" as p with context %}
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+{{ p.theme_head(value_label) }}
+</head>
+<body class="flex min-h-screen font-body-md text-body-md antialiased">
+{{ p.sidebar_nav("value") }}
+<main class="flex-1 flex flex-col min-w-0 overflow-y-auto">
+<header class="flex justify-between items-center w-full px-4 md:px-section-margin py-unit h-20 sticky top-0 z-40 bg-background/80 backdrop-blur-md">
+{{ p.mobile_brand() }}
+<div class="hidden md:block flex-1">
+<h2 class="font-headline-md text-headline-md text-on-surface font-bold">{{ value_label }} Insights</h2>
+</div>
+{{ p.avatar_badge() }}
+</header>
+<div class="p-4 md:p-8 max-w-7xl mx-auto w-full space-y-8 pb-24 md:pb-8">
+<h2 class="md:hidden font-headline-lg-mobile text-headline-lg-mobile text-on-surface font-extrabold mb-4">{{ value_label }} Insights</h2>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<div class="lg:col-span-2 bg-surface-container-lowest rounded-xl soft-shadow p-6 border border-surface-container-highest flex flex-col justify-between">
+<div id="topBlock"></div>
+</div>
+<div class="bg-surface-container-low rounded-xl p-6 border border-outline-variant/30 flex flex-col">
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary">calculate</span>
+<h3 class="font-headline-md text-[20px] font-bold text-on-surface">Target Calculator</h3>
+</div>
+<div class="space-y-4 flex-1">
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-2">Desired {{ value_label }}</label>
+<div class="relative">
+<span class="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant font-bold">$</span>
+<input id="desiredBase" class="w-full bg-surface-container-lowest border-2 border-surface-dim rounded-xl py-3 pl-8 pr-4 font-body-md text-body-md focus:border-primary focus:ring-0 transition-colors" type="number" step="1000" value="0"/>
+</div>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-2">Expected Uplift %</label>
+<input id="upliftPct" class="w-full accent-secondary-container" max="30" min="0" type="range" value="0"/>
+<div class="flex justify-between mt-1">
+<span class="font-label-caps text-[12px] text-on-surface-variant">0%</span>
+<span class="font-label-caps text-[12px] text-primary font-bold" id="upliftPctLabel">0%</span>
+<span class="font-label-caps text-[12px] text-on-surface-variant">30%</span>
+</div>
+</div>
+<p class="text-xs text-on-surface-variant italic" id="targetTotalLabel"></p>
+</div>
+<button id="updateTargets" class="mt-6 w-full squishy-btn bg-secondary-container text-on-secondary-container font-label-caps text-label-caps py-4 px-6 rounded-full flex justify-center items-center gap-2">Update Targets</button>
+</div>
+</div>
+<div class="mt-8">
+<h3 class="font-headline-md text-[24px] font-bold text-on-surface mb-6">Market Pulse</h3>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="marketPulse"></div>
+</div>
+</div>
+</main>
+{{ p.mobile_nav("value") }}
+
+<script src="/app.js"></script>
+<script>
+let allItems = [];
+const TARGET_KEY = '{{ db_name }}_target';
+
+function saveTarget() {
+  const base = Number(document.getElementById('desiredBase').value) || 0;
+  const pct = Number(document.getElementById('upliftPct').value) || 0;
+  const total = Math.round(base * (1 + pct / 100));
+  localStorage.setItem(TARGET_KEY, JSON.stringify({ base, pct, total }));
+  document.getElementById('targetTotalLabel').textContent = `≈ ${fmtMoney(total)} target total (rough estimate: base × (1 + uplift %))`;
+  renderMarketPulse();
+}
+
+function loadTarget() {
+  const t = JSON.parse(localStorage.getItem(TARGET_KEY) || 'null');
+  if (t) {
+    document.getElementById('desiredBase').value = t.base;
+    document.getElementById('upliftPct').value = t.pct;
+    document.getElementById('upliftPctLabel').textContent = t.pct + '%';
+  }
+  const base = Number(document.getElementById('desiredBase').value) || 0;
+  const pct = Number(document.getElementById('upliftPct').value) || 0;
+  const total = Math.round(base * (1 + pct / 100));
+  document.getElementById('targetTotalLabel').textContent = `≈ ${fmtMoney(total)} target total (rough estimate: base × (1 + uplift %))`;
+}
+
+function renderTop() {
+  const successRows = allItems.filter(i => i.current_stage === {{ success_stage | tojson }} && (i.{{ value_field_prefix }}_min != null || i.{{ value_field_prefix }}_text));
+  const nonClosed = allItems.filter(i => !CLOSED_STAGES.includes(i.current_stage) && i.{{ value_field_prefix }}_max != null);
+  let headline, subtitle, pool;
+  if (successRows.length) {
+    pool = successRows;
+    headline = 'Current Top {{ success_stage }}';
+  } else if (nonClosed.length) {
+    pool = nonClosed;
+    headline = 'Best {{ value_label }} in Pipeline (no {{ success_stage | lower }} yet)';
+  } else {
+    document.getElementById('topBlock').innerHTML = `<h3 class="font-headline-md text-headline-md text-on-surface mb-1">No {{ value_label | lower }} data yet</h3><p class="text-on-surface-variant">Add a few {{ entity_plural }} with disclosed {{ value_label | lower }} and this fills in automatically.</p>`;
+    return;
+  }
+  const top = pool.reduce((best, i) => ((i.{{ value_field_prefix }}_max || 0) > (best.{{ value_field_prefix }}_max || 0) ? i : best), pool[0]);
+  subtitle = `${top.{{ primary_field }}} - ${top.{{ secondary_field }}}`;
+  const min = top.{{ value_field_prefix }}_min, max = top.{{ value_field_prefix }}_max;
+  let barHtml = '';
+  if (min != null && max != null) {
+    const scale = max * 1.15;
+    const minPct = (min / scale) * 100;
+    const spanPct = ((max - min) / scale) * 100;
+    barHtml = `
+      <div class="space-y-4">
+        <div class="flex justify-between font-label-caps text-label-caps text-on-surface-variant">
+          <span>Disclosed range</span>
+          <span>${fmtMoney(min)} – ${fmtMoney(max)}</span>
+        </div>
+        <div class="h-6 w-full bg-surface-container-low rounded-full overflow-hidden flex shadow-inner">
+          <div class="h-full" style="width: ${minPct}%"></div>
+          <div class="h-full bg-primary relative" style="width: ${spanPct}%" title="Range to high end"></div>
+        </div>
+        <div class="flex flex-wrap gap-4 pt-2">
+          <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-primary block"></span><span class="font-body-md text-body-md text-on-surface">Low ${fmtMoney(min)} → High ${fmtMoney(max)}</span></div>
+        </div>
+        ${top.{{ value_field_prefix }}_text ? `<p class="text-sm text-on-surface-variant italic">As disclosed: "${escapeHtml(top.{{ value_field_prefix }}_text)}"</p>` : ''}
+      </div>`;
+  } else {
+    barHtml = `<p class="text-on-surface-variant italic">As disclosed: "${escapeHtml(top.{{ value_field_prefix }}_text || 'not disclosed')}"</p>`;
+  }
+  document.getElementById('topBlock').innerHTML = `
+    <div class="flex justify-between items-start mb-6">
+      <div>
+        <h3 class="font-headline-md text-headline-md text-on-surface mb-1">${headline}</h3>
+        <p class="font-body-md text-body-md text-on-surface-variant">${escapeHtml(subtitle)}</p>
+      </div>
+      <div class="w-12 h-12 rounded-full ${entityAvatarBg(top.{{ primary_field }})} flex items-center justify-center">
+        <span class="text-2xl leading-none">${entityEmoji(top.{{ primary_field }})}</span>
+      </div>
+    </div>
+    ${max != null ? `<div class="flex items-baseline gap-2 mb-8"><span class="font-headline-lg text-headline-lg font-extrabold text-primary">${fmtMoney(max)}</span><span class="font-body-md text-body-md text-on-surface-variant">top of range</span></div>` : '<div class="mb-8"></div>'}
+    ${barHtml}
+  `;
+}
+
+function renderMarketPulse() {
+  const vs = valueStats(allItems);
+  const target = JSON.parse(localStorage.getItem(TARGET_KEY) || 'null');
+  let verdictHtml = `<p class="font-headline-md text-[20px] font-bold text-on-surface-variant">Set a target</p>`;
+  if (target && vs.count) {
+    let label, color;
+    if (target.base >= vs.avgMax) { label = 'Above Average'; color = 'text-tertiary-container'; }
+    else if (target.base >= vs.avgMin) { label = 'Within Range'; color = 'text-secondary'; }
+    else { label = 'Below Average'; color = 'text-primary'; }
+    verdictHtml = `<p class="font-headline-md text-[20px] font-bold ${color}">${label}</p>`;
+  }
+  document.getElementById('marketPulse').innerHTML = `
+    <div class="bg-surface-container-lowest rounded-xl soft-shadow p-5 border border-surface-container-highest flex items-center gap-4">
+      <div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-primary">trending_up</span></div>
+      <div>
+        <p class="font-label-caps text-[12px] text-on-surface-variant">Avg Disclosed {{ value_label }}</p>
+        <p class="font-headline-md text-[20px] font-bold text-on-surface">${vs.count ? `${fmtMoney(vs.avgMin)} - ${fmtMoney(vs.avgMax)}` : 'No data yet'}</p>
+      </div>
+    </div>
+    <div class="bg-surface-container-lowest rounded-xl soft-shadow p-5 border border-surface-container-highest flex items-center gap-4">
+      <div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-secondary-container">donut_large</span></div>
+      <div>
+        <p class="font-label-caps text-[12px] text-on-surface-variant">Disclosed</p>
+        <p class="font-headline-md text-[20px] font-bold text-on-surface">${vs.disclosedTotal} of ${allItems.length}</p>
+      </div>
+    </div>
+    <div class="bg-surface-container-lowest rounded-xl soft-shadow p-5 border border-surface-container-highest flex items-center gap-4">
+      <div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-tertiary-fixed-dim">check_circle</span></div>
+      <div>
+        <p class="font-label-caps text-[12px] text-on-surface-variant">Your Target vs Market</p>
+        ${verdictHtml}
+      </div>
+    </div>
+  `;
+}
+
+async function init() {
+  allItems = await getJSON('/api/{{ entity_plural }}');
+  renderTop();
+  loadTarget();
+  renderMarketPulse();
+
+  document.getElementById('upliftPct').addEventListener('input', e => {
+    document.getElementById('upliftPctLabel').textContent = e.target.value + '%';
+  });
+  document.getElementById('updateTargets').addEventListener('click', saveTarget);
+}
+init();
+</script>
+</body></html>

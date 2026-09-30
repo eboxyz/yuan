@@ -1,0 +1,159 @@
+---
+name: {{ artifact_slug }}
+description: Draft {{ artifact_label | lower }} tailored to one specific {{ entity_singular }}, using your profile, proof bank, and voice samples. Called by {{ entity_singular }}-scout-agent for queued candidates, or invoked directly for a one-off {{ entity_singular }}. Never sends or submits anything — output is always a draft for review.
+---
+
+# {{ artifact_label }}
+
+Drafts one {{ artifact_label | lower }} for one {{ entity_singular }}. Quality
+depends entirely on the matching — picking the right 1-2 proof points from
+`proof_bank.md` for *this specific {{ entity_singular }}* — not on generic
+prose-polishing. Genericness is the failure mode to actively fight.
+
+{% if has_coaching %}
+## Work authorization stays out of drafts
+
+Never mention visa status, work authorization or sponsorship in a draft unless
+they ask you to. Whether and when to raise it is their call.
+
+{% endif %}
+## Inputs
+
+- **The {{ source_label }}**: a URL to fetch, or text pasted directly by
+  the caller. Read the whole thing — not just a bullet list, what the
+  other side actually seems to care about.
+- **Profile/background doc** — required. Look for
+  `{{ config_dir_name }}/profile.md` first; if it's not there, check the
+  folder for *any* PDF/doc file before concluding there isn't one — people
+  often drop in a resume or bio under its own name (e.g.
+  `jane-doe-resume.pdf`) rather than renaming it to `profile.md`. Only stop
+  and ask for one if the folder is genuinely empty of anything usable.
+- `{{ config_dir_name }}/proof_bank.md` — the primary source of specific,
+  tailored proof points. If this file only has the EXAMPLE entry (or
+  doesn't exist yet), fall back to `profile.md` directly, and say plainly
+  in your output that the draft is lower-tailoring quality because the
+  proof bank isn't filled in yet — don't silently produce a generic draft
+  without flagging why.
+- `{{ config_dir_name }}/voice.md`, if present — sample past writing.
+  Match its tone, sentence rhythm, and level of formality. If absent, use
+  the default voice below.
+- Optionally, a `{{ entity_singular }}_id` from the tracker (when called by
+  {{ entity_singular }}-scout-agent, or when you reference a specific
+  queued/{{ baseline_stage | lower }} row directly) — if given, write the
+  result into that row's `{{ artifact_field_prefix }}_draft` column instead
+  of just returning text.
+
+## Default voice (used only when voice.md is absent)
+
+Direct, confident, first-person, plain sentences. No throat-clearing. Say
+the specific thing, not the category of thing.
+
+**Banned phrases** — a starting list, adjust to your domain. Never use
+these or close variants in default voice unless a real voice sample shows
+you actually write this way:
+- "I am writing to express my interest in..."
+- "I believe I would be a great fit because..."
+- "I've always been passionate about..."
+- "team player" / "hard worker" / "go-getter" / "self-starter"
+- "I look forward to hearing from you" as a sole closing line with
+  nothing else
+
+## Process
+
+1. **Read the {{ source_label }} closely.** Pull out 2-4 things that
+   actually matter here — not just a copy of the requirements/description,
+   but what seems to actually be the crux of it.
+
+2. **Match against the proof bank.** For each of the 2-4 things
+   identified, find the entry whose tags/content most directly proves it.
+   Pick the best **1-2 entries total** for the whole draft — resist the
+   urge to cram in three or four; going deep on one or two real, specific
+   proof points beats skimming five. If nothing in the proof bank is a
+   good match for what actually matters most here, say so in your output
+   rather than forcing a weak match.
+
+3. **Draft**, roughly 250-350 words (3-4 short paragraphs) unless voice
+   samples suggest a different length works better:
+   - **Opening** (1-2 sentences): specific to this {{ entity_singular }} —
+     name the actual thing that connects to the proof point you're about
+     to bring in. Never open with generic enthusiasm and nothing concrete
+     backing it up.
+   - **Body** (1-2 paragraphs): one matched proof point per paragraph,
+     using its "punch version" if the entry has one (adapt lightly to fit
+     this {{ entity_singular }}'s specific language rather than pasting
+     verbatim), explicitly tying the result back to what's actually being
+     asked for.
+   - **Close** (1-2 sentences): confident, specific next step.
+   - Never invent achievements, numbers, or experience not present in
+     `profile.md` or `proof_bank.md`. If the fit is genuinely thin, write
+     a shorter, honest draft rather than padding with invented specifics.
+
+4. **Deliver.** A draft isn't done until it's a real file — you'll want to
+   upload these to forms/sites directly, not hand-copy text out of a
+   database column.
+   - Write the draft to `{{ config_dir_name }}/{{ artifact_dir_name }}/{id}_{primary}_{secondary
+     slug}.txt` (slug = alphanumerics only, hyphen-joined; primary/secondary
+     taken from the tracker row, or from context if called standalone).
+     Create the directory if it doesn't exist. Write it with the file-writing
+     tool, not a shell heredoc.
+   - If called with a `{{ entity_singular }}_id`: write this SQL with the
+     file-writing tool to `{{ config_dir_name }}/{{ artifact_dir_name }}/.update.sql`
+     (overwrite it each time), then run exactly
+     `psql -d {{ db_name }} -f {{ config_dir_name }}/{{ artifact_dir_name }}/.update.sql`.
+     A file plus one plain `psql -d` command needs no quoting tricks and is
+     what the unattended daily run is allowed to do.
+     ```sql
+     UPDATE {{ entity_plural }}
+     SET {{ artifact_field_prefix }}_draft = $draft$...$draft$,
+         {{ artifact_field_prefix }}_file_path = '/absolute/path/to/the/.txt/file'
+     WHERE id = <id>;
+     ```
+     Store the *resolved absolute path* — the dashboard's "Reveal file"
+     button needs a real path, not a relative one. Confirm briefly,
+     including the file path.
+   - If called standalone (no id — a one-off {{ entity_singular }} you
+     mention in chat, not something in the tracker): still write the file
+     (pick a sensible name under `{{ config_dir_name }}/{{ artifact_dir_name }}/`
+     without an id prefix), tell the path, and give a one-line note on
+     which proof-bank entry/entries you used and why, so the matching
+     logic can be sanity-checked, not just the prose.
+
+{% if scout_outreach_mode %}
+## Direct outreach mode
+
+Used when {{ entity_singular }}-scout-agent flags a {{ entity_singular }} as
+inviting direct contact (the posting names a person or an email address, or
+says to skip the form) instead of a standard blind application. The caller
+passes the contact (name and/or email, if known) along with the source text.
+
+This produces a short **email**, not a formal {{ artifact_label | lower }}, so
+it differs from the default process above:
+
+- **Shorter**: 100-180 words, not 250-350. One matched proof point, not two —
+  this is a first note, not a full pitch.
+- **Opens with a real greeting** addressed to the contact by name if known
+  (`Hi {Name},`). If only an email address was found, open with a line that
+  refers to the specific thing they posted, never a generic "To whom it may
+  concern."
+- **Closes lower-friction**: something like "happy to send more detail or jump
+  on a call this week" — this is a cold note to a person, not a document
+  attached to a form, so the ask should read like the start of a conversation.
+- Same rules otherwise: no invented achievements or numbers, no banned
+  phrases, and pick the one proof point from `proof_bank.md` the same way.
+
+**Delivery differs too**: write the file with an `_outreach` suffix
+(`..._outreach.txt`) so you can tell at a glance it is an email body for a
+specific address, not a document to upload. Still write it into
+`{{ artifact_field_prefix }}_draft` / `{{ artifact_field_prefix }}_file_path`
+when called with a `{{ entity_singular }}_id`. If a contact email was found,
+say so plainly in your confirmation (e.g. "note also names foo@company.com as
+the contact") — that is the whole point of this mode, and it has to reach the
+person reading this, not just sit in a notes column.
+
+{% endif %}
+## Notes for {{ entity_singular }}-scout-agent callers
+
+When invoked as part of a queueing run, keep the per-candidate cost down:
+don't re-fetch the {{ source_label }} if the caller already has the text in
+hand — pass it through instead of re-fetching. Skip invocation entirely for
+candidates where `{{ artifact_field_prefix }}_needed` is clearly `false`.

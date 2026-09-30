@@ -1,0 +1,73 @@
+{
+  "project_name": "Job Search Tracker",
+  "app_display_name": "Yuan",
+  "tagline": "Keep going.",
+  "icon": "work",
+  "entity_singular": "application",
+  "entity_plural": "applications",
+  "primary_field": "company",
+  "primary_label": "Company",
+  "secondary_field": "role",
+  "secondary_label": "Role",
+  "source_type_options": [
+    "Self-applied",
+    "Inbound (in-house recruiter)",
+    "Inbound (3rd-party recruiter)"
+  ],
+  "stages": [
+    "Queued",
+    "Applied",
+    "Screen",
+    "Onsite",
+    "Offer",
+    "Rejected",
+    "Withdrawn"
+  ],
+  "queued_stage": "Queued",
+  "baseline_stage": "Applied",
+  "success_stage": "Offer",
+  "closed_stages": [
+    "Rejected",
+    "Withdrawn"
+  ],
+  "has_value": true,
+  "value_label": "Comp",
+  "value_field_prefix": "comp",
+  "has_category": true,
+  "category_label": "Industry",
+  "category_field": "industry",
+  "has_contact": true,
+  "contact_singular": "recruiter",
+  "contact_plural": "recruiters",
+  "contact_org_label": "Agency",
+  "contact_org_field": "agency",
+  "has_scout_agent": true,
+  "source_label": "job board",
+  "artifact_enabled": true,
+  "artifact_label": "Cover letter",
+  "scout_sources": [
+    "greenhouse",
+    "ashby",
+    "yc",
+    "hn"
+  ],
+  "scout_budget_preset": "standard",
+  "scout_tier_mode": "strong_and_maybe",
+  "artifact_scope": "strong",
+  "scout_outreach_mode": false,
+  "watch_companies": [],
+  "config_dir_name": "job_search",
+  "db_name": "job_search_tracker",
+  "port": 8420,
+  "stage_notes": {
+    "Queued": "Not applied yet.",
+    "Applied": "Application sent.",
+    "Screen": "Any round before the final one: recruiter call, hiring-manager call, technical screen or take-home.",
+    "Onsite": "The final round only, in person or virtual.",
+    "Rejected": "They said no.",
+    "Withdrawn": "They pulled out.",
+    "Offer": "Offer received."
+  },
+  "has_coaching": true,
+  "daily_run": "08:00"
+}

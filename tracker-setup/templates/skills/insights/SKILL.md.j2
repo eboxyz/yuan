@@ -1,0 +1,100 @@
+---
+name: {{ entity_singular }}-insights
+description: Regenerate rough, speculative "how does this one look" insights for every {{ entity_singular }} in the {{ db_name }} Postgres database, and write them back to {{ entity_plural }}.insight_text so the dashboard's Insights card reflects the latest read.
+---
+
+# {{ entity_plural_label }} insights
+
+Re-run this whenever you want a fresh read on the pipeline — after new
+stage changes, new notes, new {{ entity_plural }}, or just because it's been
+a while. It regenerates every row's insight from scratch (not incremental).
+
+## What this is
+
+A short, opinionated, *speculative* read on each {{ entity_singular }} — not a
+score, not a prediction, just "how does this one look given what we know."
+It's meant to help you decide where to spend follow-up energy, not to be
+authoritative.
+
+## Steps
+
+1. **Pull the data.** Connect to the local Postgres database `{{ db_name }}`
+   (no auth needed locally: `psql -d {{ db_name }}` or
+   `psycopg.connect("dbname={{ db_name }}")`). Query every {{ entity_singular }}
+   together with{% if has_contact %} its {{ contact_singular }} and{% endif %} its current stage-entry time:
+
+   ```sql
+   SELECT e.id, e.{{ primary_field }}, e.{{ secondary_field }}, e.source_type,
+{% if has_contact %}
+          c.name AS {{ contact_singular }}_name, c.{{ contact_org_field }},
+{% endif %}
+          e.date_first_contact, e.current_stage, e.next_step, e.next_step_date,
+{% if has_value %}
+          e.{{ value_field_prefix }}_text, e.{{ value_field_prefix }}_min, e.{{ value_field_prefix }}_max,
+{% endif %}
+          e.location, e.notes,
+          (SELECT changed_at FROM stage_history WHERE {{ entity_singular }}_id = e.id
+           ORDER BY changed_at DESC LIMIT 1) AS stage_entered_at
+   FROM {{ entity_plural }} e{% if has_contact %} LEFT JOIN {{ contact_plural }} c ON c.id = e.{{ contact_singular }}_id{% endif %}
+
+   ORDER BY e.id;
+   ```
+
+2. **Write one insight per row.** For each {{ entity_singular }}, compose a
+   1-3 sentence take. Draw on whatever signal is actually present — don't
+   pad rows that don't have much yet. Things worth naming when they're
+   there:
+   - **Momentum / staleness**: how long since `date_first_contact` or the
+     last stage change with no movement; flag anything stalled (as a rough
+     guide, more than a week or two with no response is worth a
+     nudge-follow-up mention{% if has_contact %}; {{ contact_singular }}-sourced rows waiting on
+     a promised next step are worth flagging by name{% endif %}).
+{% if has_value %}
+   - **{{ value_label }}**, relative to the rest of the *current* pipeline
+     (not a fixed number) — call out standouts high or low.
+{% endif %}
+   - **Risk flags buried in notes**: anything that reads as a dealbreaker per
+     `notes`, unresolved duplicates, an interaction that seemed off, an
+     unusually demanding ask relative to what's disclosed.
+   - **Positive signal**: a referral, a responsive and detailed
+     {% if has_contact %}{{ contact_singular }}{% else %}contact{% endif %}, an unusually good fit note you already wrote yourself{% if has_value %}, {{ value_label | lower }}
+     that beats the pipeline median{% endif %}.
+
+   - **Just added / no signal yet**: say so plainly instead of manufacturing
+     a take. If {% if has_value %}{{ value_label | lower }} or {% endif %}location is missing because it
+     wasn't captured at insert time, say that too.
+   - Keep it grounded in what's actually in the row — don't invent facts
+     that aren't in `notes`{% if has_value %}/`{{ value_field_prefix }}_text`{% endif %}/etc.
+
+
+3. **Write it back.** For every {{ entity_singular }}, whether or not it
+   previously had an insight:
+
+   ```sql
+   UPDATE {{ entity_plural }}
+   SET insight_text = $insight$<the 1-3 sentence take>$insight$,
+       insight_generated_at = now()
+   WHERE id = <id>;
+   ```
+
+   Use dollar-quoting (`$insight$...$insight$`) to avoid apostrophe/quote
+   escaping issues in generated text. Batch all UPDATEs into one `.sql`
+   file in the scratchpad and run it with `psql -d {{ db_name }} -f <file>`
+   rather than issuing many separate `psql -c` calls.
+
+4. **Confirm.** The dashboard's "Rough insights" card reads `GET
+   /api/insights` live — no restart needed unless `api/server.py` itself
+   changed. Spot-check a couple of rows with:
+
+   ```sql
+   SELECT {{ primary_field }}, insight_text FROM {{ entity_plural }} ORDER BY insight_generated_at DESC LIMIT 5;
+   ```
+
+## Notes
+
+- This skill only *reads* `{{ entity_plural }}`{% if has_contact %}/`{{ contact_plural }}`{% endif %}/`stage_history` and *writes*
+  `insight_text`/`insight_generated_at`. It never changes `current_stage`{% if has_value %},
+  {{ value_label | lower }} fields{% endif %}, or anything else — those updates are a separate,
+  explicit action you ask for directly.
+- If new columns get added to `{{ entity_plural }}` that carry signal, fold
+  them into the query and the "things worth naming" list above.

@@ -1,0 +1,576 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "intake.schema.json",
+  "title": "Job search intake, version 1",
+  "description": "A person's answers to the setup questions. Produced by the setup page (or written by hand) and read by generate_project.py --intake. Free text is copied into the tracker's files word for word. 'title' is the question as the page asks it; 'description' is the one-line reason shown under it; 'x-labels' are the words shown for each choice.",
+  "type": "object",
+  "required": [
+    "version",
+    "basics",
+    "where_to_look"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "basics": {
+      "type": "object",
+      "required": [
+        "preferred_name"
+      ],
+      "properties": {
+        "preferred_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60,
+          "pattern": "\\S",
+          "title": "What should Claude call you?"
+        },
+        "job_finder": {
+          "type": "boolean",
+          "title": "Turn on the assistant that finds roles for you",
+          "description": "It searches public job boards and lists matches for you to review. It never applies for you.",
+          "x-default": true
+        },
+        "drafting": {
+          "type": "boolean",
+          "title": "Draft cover letters for good matches",
+          "description": "Drafts are for you to review and send yourself. Needs the job finder.",
+          "x-default": true
+        }
+      }
+    },
+    "what_you_want": {
+      "type": "object",
+      "properties": {
+        "priorities": {
+          "type": "array",
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "pay",
+              "balance",
+              "flexibility",
+              "stability",
+              "growth",
+              "team",
+              "mission"
+            ]
+          },
+          "x-labels": {
+            "pay": "Pay",
+            "balance": "Work-life balance",
+            "flexibility": "Where and how I work",
+            "stability": "Stability and low risk",
+            "growth": "Growth and learning",
+            "team": "Team and manager",
+            "mission": "What the company does"
+          },
+          "title": "Rank what matters most to you in your next job (top 3)",
+          "description": "Every offer is a trade. Knowing your order ahead of time makes the choice clearer when an offer arrives."
+        },
+        "tradeoff": {
+          "type": "string",
+          "maxLength": 1000,
+          "title": "What would you give up to get your #1?",
+          "description": "For example: some pay for fully remote, or a bigger title for a more stable company."
+        },
+        "pay_floor": {
+          "type": "string",
+          "maxLength": 200,
+          "title": "The lowest base pay you would accept",
+          "description": "Decide this before you talk to anyone. It's much harder to set during a conversation with a recruiter."
+        },
+        "pay_other": {
+          "type": "array",
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "bonus",
+              "equity",
+              "health",
+              "retirement",
+              "sign_on",
+              "relocation"
+            ]
+          },
+          "x-labels": {
+            "bonus": "Bonus",
+            "equity": "Equity",
+            "health": "Health insurance",
+            "retirement": "Retirement match",
+            "sign_on": "Sign-on bonus",
+            "relocation": "Relocation help"
+          },
+          "title": "Which other parts of the package matter to you?",
+          "description": "Base pay is only part of an offer. Two offers with the same base can be very different."
+        },
+        "pay_notes": {
+          "type": "string",
+          "maxLength": 1000,
+          "title": "Anything else about pay",
+          "description": "For example: why this number, or what equity is worth to you."
+        },
+        "balance": {
+          "type": "string",
+          "maxLength": 1000,
+          "title": "Hours, on-call and travel: what are your limits?",
+          "description": "Easier to decide now than to discover after you start."
+        },
+        "work_arrangements": {
+          "type": "array",
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "remote",
+              "hybrid",
+              "onsite"
+            ]
+          },
+          "x-labels": {
+            "remote": "Remote",
+            "hybrid": "Hybrid",
+            "onsite": "In the office"
+          },
+          "title": "Which ways of working are you open to?"
+        },
+        "locations": {
+          "type": "string",
+          "maxLength": 300,
+          "title": "Where can you work, and how far will you commute?"
+        },
+        "company_size": {
+          "type": "array",
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "early_startup",
+              "growing",
+              "large"
+            ]
+          },
+          "x-labels": {
+            "early_startup": "Early startup (under 50 people)",
+            "growing": "Growing company (50 to 1,000)",
+            "large": "Large company (1,000+)"
+          },
+          "title": "What size of company do you want?",
+          "description": "Smaller usually means more scope and more risk; larger usually means more structure and more stability. Leave it empty for no preference."
+        },
+        "company_size_why": {
+          "type": "string",
+          "maxLength": 1000,
+          "title": "Why that size?"
+        },
+        "timeline": {
+          "type": "string",
+          "maxLength": 500,
+          "title": "How long can you search before pressure starts making the choice for you?",
+          "description": "Knowing this helps you see when you're saying yes to a role because it's right, and when it's because time is running out."
+        },
+        "must_haves": {
+          "type": "array",
+          "maxItems": 15,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "title": "Must-haves",
+          "description": "One per line."
+        },
+        "dealbreakers": {
+          "type": "array",
+          "maxItems": 15,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "title": "Dealbreakers: what would make you say no even if the pay is great?",
+          "description": "One per line."
+        }
+      }
+    },
+    "work_authorization": {
+      "type": "object",
+      "description": "Optional. Stays on your computer. Used to skip roles that can't hire you and to keep your deadlines in view. General information only, not legal advice.",
+      "properties": {
+        "status": {
+          "enum": [
+            "no_sponsorship_needed",
+            "f1_opt",
+            "stem_opt",
+            "h1b",
+            "dependent_ead",
+            "green_card_in_process",
+            "other",
+            "not_sure"
+          ],
+          "x-labels": {
+            "no_sponsorship_needed": "I don't need sponsorship (citizen or green card)",
+            "f1_opt": "F-1 OPT",
+            "stem_opt": "F-1 STEM OPT",
+            "h1b": "H-1B",
+            "dependent_ead": "EAD as a dependent (e.g. H-4, L-2)",
+            "green_card_in_process": "Green card in process",
+            "other": "Other",
+            "not_sure": "Not sure"
+          },
+          "title": "Your current work authorization"
+        },
+        "authorized_until": {
+          "type": "string",
+          "format": "date",
+          "title": "When does your current authorization end?",
+          "description": "Claude keeps this date in view and checks in as it gets closer."
+        },
+        "needs": {
+          "type": "array",
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "h1b_transfer",
+              "new_h1b",
+              "e_verify_employer",
+              "green_card",
+              "not_sure"
+            ]
+          },
+          "x-labels": {
+            "h1b_transfer": "H-1B transfer",
+            "new_h1b": "A new H-1B (this goes through the lottery)",
+            "e_verify_employer": "An E-Verify employer (needed for STEM OPT)",
+            "green_card": "Green card sponsorship",
+            "not_sure": "Not sure"
+          },
+          "title": "What do you need from an employer?"
+        },
+        "green_card_timing": {
+          "enum": [
+            "right_away",
+            "within_a_year",
+            "later",
+            "not_needed"
+          ],
+          "x-labels": {
+            "right_away": "Right away",
+            "within_a_year": "Within the first year",
+            "later": "Later is fine",
+            "not_needed": "Not needed"
+          },
+          "title": "When do you need green card sponsorship to start?"
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 1000,
+          "title": "Anything else about your situation",
+          "description": "For example: a grace period you're in, or a spouse's status that depends on yours."
+        }
+      }
+    },
+    "risk": {
+      "type": "object",
+      "description": "Optional. Helps weigh stability against upside. Stays on your computer.",
+      "properties": {
+        "comfort": {
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "x-labels": {
+            "low": "Low: I need stability",
+            "medium": "Some",
+            "high": "High: I can take a chance"
+          },
+          "title": "How much risk can you take on right now?"
+        },
+        "runway": {
+          "enum": [
+            "under_3_months",
+            "3_to_6_months",
+            "6_to_12_months",
+            "over_12_months",
+            "prefer_not_to_say"
+          ],
+          "x-labels": {
+            "under_3_months": "Under 3 months",
+            "3_to_6_months": "3 to 6 months",
+            "6_to_12_months": "6 to 12 months",
+            "over_12_months": "Over a year",
+            "prefer_not_to_say": "Prefer not to say"
+          },
+          "title": "How long could you cover your costs without a job?"
+        },
+        "dependents": {
+          "enum": [
+            "yes",
+            "no",
+            "prefer_not_to_say"
+          ],
+          "x-labels": {
+            "yes": "Yes",
+            "no": "No",
+            "prefer_not_to_say": "Prefer not to say"
+          },
+          "title": "Does anyone depend on your income?"
+        },
+        "layoff_impact": {
+          "type": "string",
+          "maxLength": 1000,
+          "title": "If you were laid off six months into a new job, what would that mean for you?",
+          "description": "There's no wrong answer. It helps judge how much a company's stability matters to you."
+        }
+      }
+    },
+    "where_to_look": {
+      "type": "object",
+      "required": [
+        "titles"
+      ],
+      "properties": {
+        "titles": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "pattern": "\\S"
+          },
+          "title": "Job titles to look for",
+          "description": "One per line, as they appear in job postings, e.g. “Senior data analyst”."
+        },
+        "seniority": {
+          "type": "string",
+          "maxLength": 100,
+          "title": "Level",
+          "description": "e.g. mid-level, senior, lead"
+        },
+        "industries_like": {
+          "type": "array",
+          "maxItems": 15,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "title": "Industries you're drawn to",
+          "description": "One per line."
+        },
+        "industries_avoid": {
+          "type": "array",
+          "maxItems": 15,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "title": "Industries to avoid",
+          "description": "One per line."
+        },
+        "companies_like": {
+          "type": "array",
+          "maxItems": 30,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "title": "Companies you're especially interested in",
+          "description": "One per line."
+        },
+        "companies_skip": {
+          "type": "array",
+          "maxItems": 30,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "title": "Companies to skip",
+          "description": "One per line."
+        }
+      }
+    },
+    "job_finder": {
+      "type": "object",
+      "properties": {
+        "sources": {
+          "type": "array",
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "company_boards",
+              "yc",
+              "hn",
+              "web"
+            ]
+          },
+          "title": "Where should it look?",
+          "description": "It reads these straight from their public listings. You can change this any time.",
+          "x-labels": {
+            "company_boards": "Company job boards (Greenhouse and Ashby)",
+            "yc": "Y Combinator startup jobs",
+            "hn": "Hacker News “Who is hiring?”",
+            "web": "General web search"
+          },
+          "x-help": {
+            "company_boards": "Many companies post here first, and it checks the company's own board directly.",
+            "yc": "Startups funded by Y Combinator, often small and early.",
+            "hn": "A monthly thread where companies post roles; some invite you to email the hiring manager directly.",
+            "web": "Finds roles anywhere, but results can be out of date, so it checks the company's own page before trusting them."
+          },
+          "x-default": [
+            "company_boards",
+            "yc",
+            "hn"
+          ]
+        },
+        "run_size": {
+          "enum": [
+            "light",
+            "standard",
+            "thorough"
+          ],
+          "title": "How much should it do each run?",
+          "description": "Bigger runs find more and use more of your Claude usage.",
+          "x-labels": {
+            "light": "Light: a few strong matches",
+            "standard": "Standard",
+            "thorough": "Thorough: more searching and more reading"
+          },
+          "x-default": "standard"
+        },
+        "pickiness": {
+          "enum": [
+            "strong_only",
+            "strong_and_maybe"
+          ],
+          "title": "How picky should it be?",
+          "x-labels": {
+            "strong_only": "Only strong matches",
+            "strong_and_maybe": "Strong matches, plus maybes with one clear gap"
+          },
+          "x-default": "strong_and_maybe"
+        },
+        "drafts": {
+          "enum": [
+            "none",
+            "strong",
+            "strong_with_outreach",
+            "all"
+          ],
+          "title": "What should it draft for you on its own?",
+          "description": "Drafts are always for you to review and send yourself.",
+          "x-labels": {
+            "none": "Nothing; I'll ask when I want one",
+            "strong": "Cover letters for strong matches",
+            "strong_with_outreach": "Cover letters, plus short emails when a posting invites you to write directly",
+            "all": "Cover letters for every match"
+          },
+          "x-default": "strong"
+        },
+        "watch_companies": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "\\S"
+          },
+          "title": "Companies to check on every run",
+          "description": "One per line. Their job boards are checked directly each time."
+        },
+        "daily_run": {
+          "type": "string",
+          "pattern": "^(off|([01]?[0-9]|2[0-3]):[0-5][0-9])$",
+          "title": "When should the job finder run each day?",
+          "description": "It searches while you're away and has new matches waiting for you. Each run uses some of your Claude usage; it skips the day when plenty is already waiting for your review. Choose a time (24-hour, default 08:00) or off. You can change it any time.",
+          "x-default": "08:00"
+        }
+      }
+    },
+    "about_you": {
+      "type": "object",
+      "properties": {
+        "strengths": {
+          "type": "string",
+          "maxLength": 4000,
+          "title": "In a few sentences, what are you good at?",
+          "description": "In your own words. Claude uses this together with your resume."
+        },
+        "links": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "title": "Links",
+          "description": "One per line: a portfolio, a public profile, a personal site."
+        },
+        "voice_sample": {
+          "type": "string",
+          "maxLength": 8000,
+          "title": "Something you wrote that sounds like you",
+          "description": "Optional. A past cover letter or email you liked; drafts will follow its tone."
+        }
+      }
+    },
+    "stories": {
+      "type": "array",
+      "maxItems": 6,
+      "description": "Optional. A useful answer has the moment, your part (say 'I', not only 'we': interviewers need to know what you did), a choice you made and why, and what changed. A few honest sentences beat a polished paragraph.",
+      "items": {
+        "type": "object",
+        "required": [
+          "prompt",
+          "notes"
+        ],
+        "properties": {
+          "prompt": {
+            "enum": [
+              "hard_call",
+              "saw_differently",
+              "no_clear_answer",
+              "moved_people",
+              "not_as_planned",
+              "beyond_the_ask",
+              "other"
+            ],
+            "x-labels": {
+              "hard_call": "A hard call you made in your work",
+              "saw_differently": "A time you and a colleague saw a problem differently",
+              "no_clear_answer": "A time you had to decide without a clear answer",
+              "moved_people": "A time you got people moving in one direction without being their manager",
+              "not_as_planned": "Something that didn't go as planned, and what you did next",
+              "beyond_the_ask": "A time you did more than you were asked, and why",
+              "other": "A story you want to tell"
+            }
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "notes": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "pattern": "\\S"
+          }
+        }
+      }
+    }
+  }
+}

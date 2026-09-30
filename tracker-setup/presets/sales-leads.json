@@ -1,0 +1,42 @@
+{
+  "project_name": "Sales Pipeline",
+  "app_display_name": "PipelinePal",
+  "tagline": "Close the loop.",
+  "icon": "handshake",
+  "db_name": "sales_leads_tracker",
+  "port": 8423,
+
+  "entity_singular": "lead",
+  "entity_plural": "leads",
+  "primary_field": "company",
+  "primary_label": "Company",
+  "secondary_field": "opportunity",
+  "secondary_label": "Opportunity",
+  "source_type_options": ["Outbound", "Inbound", "Referral"],
+
+  "stages": ["Queued", "Contacted", "Qualified", "Proposal", "Closed Won", "Closed Lost"],
+  "queued_stage": "Queued",
+  "baseline_stage": "Contacted",
+  "success_stage": "Closed Won",
+  "closed_stages": ["Closed Lost"],
+
+  "has_value": true,
+  "value_label": "Deal Size",
+  "value_field_prefix": "deal",
+
+  "has_category": true,
+  "category_label": "Industry",
+  "category_field": "industry",
+
+  "has_contact": true,
+  "contact_singular": "contact",
+  "contact_plural": "contacts",
+  "contact_org_label": "Title",
+  "contact_org_field": "title",
+
+  "has_scout_agent": true,
+  "source_label": "lead source",
+  "artifact_enabled": false,
+
+  "config_dir_name": "sales_search"
+}

@@ -1,0 +1,149 @@
+{% import "dashboard/_partials.j2" as p with context %}
+<!DOCTYPE html>
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+{{ p.theme_head("Review Queue") }}
+</head>
+<body class="font-body-md text-on-background flex h-full overflow-hidden antialiased">
+{{ p.sidebar_nav("queue") }}
+<div class="flex-1 flex flex-col h-full overflow-hidden relative w-full">
+<header class="flex justify-between items-center w-full px-4 md:px-section-margin py-unit h-20 sticky top-0 z-40 bg-background/80 backdrop-blur-md flex-shrink-0">
+{{ p.mobile_brand() }}
+<div class="hidden md:block">
+<h2 class="font-headline-lg text-headline-lg text-on-background">Review Queue</h2>
+</div>
+{{ p.avatar_badge() }}
+</header>
+<main class="flex-1 overflow-y-auto px-4 md:px-section-margin pb-24 md:pb-8 w-full">
+<div class="md:hidden mb-6 mt-2">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-background">Review Queue</h2>
+</div>
+<p class="text-on-surface-variant mb-6 max-w-2xl" id="subtitle">Loading…</p>
+<div class="flex flex-col gap-4" id="queueList"></div>
+</main>
+</div>
+{{ p.mobile_nav("queue") }}
+
+<script src="/app.js"></script>
+<script>
+let queueItems = [];
+
+function tierBadge(item) {
+  if (item.match_tier === 'A') return `<span class="bg-tertiary-container text-on-tertiary-container font-label-caps text-[10px] px-3 py-1 rounded-full font-bold">A-tier match</span>`;
+  if (item.match_tier === 'B') return `<span class="bg-secondary-container text-on-secondary-container font-label-caps text-[10px] px-3 py-1 rounded-full font-bold">B-tier match</span>`;
+  return '';
+}
+{% if artifact_enabled %}
+
+// Explains, in plain terms, why a {{ artifact_label | lower }} does or
+// doesn't exist for this candidate -- "not needed by the source" and
+// "skipped to manage drafting cost" are different reasons and shouldn't
+// look the same.
+function artifactStatus(item) {
+  if (item.{{ artifact_field_prefix }}_file_path) {
+    const note = item.{{ artifact_field_prefix }}_needed === true
+      ? 'Source requires one.'
+      : item.{{ artifact_field_prefix }}_needed === false
+        ? "Source says it's optional, but drafted anyway."
+        : "Source didn't say either way — drafted since this was an A-tier match.";
+    return { hasFile: true, badge: `<span class="bg-primary-container text-on-primary-container font-label-caps text-[10px] px-3 py-1 rounded-full">{{ artifact_label }} ready</span>`, note };
+  }
+  if (item.{{ artifact_field_prefix }}_requested) {
+    return {
+      hasFile: false, requested: true,
+      badge: `<span class="bg-secondary-container text-on-secondary-container font-label-caps text-[10px] px-3 py-1 rounded-full">{{ artifact_label }} requested</span>`,
+      note: "Flagged for drafting. Mention it next time you're in Claude Code, or it'll get picked up automatically on the next {{ entity_singular }}-scout-agent run.",
+    };
+  }
+  if (item.{{ artifact_field_prefix }}_needed === false) {
+    return { hasFile: false, badge: `<span class="bg-surface-variant text-on-surface-variant font-label-caps text-[10px] px-3 py-1 rounded-full">No {{ artifact_label | lower }} needed</span>`, note: "The source explicitly says one isn't required." };
+  }
+  if (item.{{ artifact_field_prefix }}_needed === true) {
+    return { hasFile: false, badge: `<span class="bg-primary-container text-on-primary-container font-label-caps text-[10px] px-3 py-1 rounded-full">Needed — not drafted yet</span>`, note: 'The source requires one but it hasn\'t been drafted yet — ask to have it drafted.' };
+  }
+  return {
+    hasFile: false,
+    badge: `<span class="bg-surface-variant text-on-surface-variant font-label-caps text-[10px] px-3 py-1 rounded-full">No {{ artifact_label | lower }} drafted</span>`,
+    note: `The source doesn't mention {{ artifact_label | lower }}${item.match_tier === 'B' ? ', and this was a B-tier match, so drafting was skipped to manage cost' : ''}. Some sources genuinely don't say either way even when one would help — if you think this one needs it, request it below.`,
+  };
+}
+{% endif %}
+
+function queueCardHtml(item) {
+  const draftId = `draft-${item.id}`;
+  {% if artifact_enabled %}const art = artifactStatus(item);
+{% endif %}
+  return `
+  <div class="bg-white rounded-xl p-6 soft-shadow border border-surface-container-highest" id="card-${item.id}">
+    <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
+      <div class="flex items-start gap-4">
+        <div class="w-14 h-14 rounded-full ${entityAvatarBg(item.{{ primary_field }})} flex items-center justify-center shadow-sm shrink-0"><span class="text-2xl leading-none">${entityEmoji(item.{{ primary_field }})}</span></div>
+        <div>
+          <h3 class="font-headline-md text-xl text-on-background leading-tight mb-1">${escapeHtml(item.{{ primary_field }})}</h3>
+          <p class="font-body-lg text-body-lg text-on-background font-bold">${escapeHtml(item.{{ secondary_field }})}</p>
+          <p class="text-sm text-on-surface-variant mb-2">${escapeHtml(item.location || 'Location not specified')}{% if has_category %}${item.{{ category_field }} ? ' • ' + escapeHtml(item.{{ category_field }}) : ''}{% endif %}</p>
+          <div class="flex flex-wrap gap-2 items-center">
+            ${tierBadge(item)}
+            {% if artifact_enabled %}${art.badge}{% endif %}
+
+            ${item.found_via ? `<span class="bg-surface-container-low text-on-surface-variant font-label-caps text-[10px] px-3 py-1 rounded-full">via ${escapeHtml(item.found_via)}</span>` : ''}
+            <span class="text-on-surface-variant text-xs">found ${relativeTime(item.created_at)}</span>
+          </div>
+        </div>
+      </div>
+      <div class="flex flex-row md:flex-col gap-2 shrink-0">
+        ${item.source_link ? `<a href="${escapeHtml(item.source_link)}" target="_blank" rel="noopener" class="bg-primary text-on-primary font-bold py-2 px-5 rounded-full squishy-btn transition-all flex items-center justify-center gap-2 text-sm"><span class="material-symbols-outlined text-[18px]">open_in_new</span>Open source</a>` : ''}
+        <button onclick="markCommitted(${item.id})" class="bg-tertiary-container text-on-tertiary-container font-bold py-2 px-5 rounded-full squishy-btn transition-all flex items-center justify-center gap-2 text-sm"><span class="material-symbols-outlined text-[18px]">check</span>{{ baseline_stage }}</button>
+        <button onclick="dismiss(${item.id})" class="bg-surface-container text-on-background font-bold py-2 px-5 rounded-full squishy-btn transition-all hover:bg-surface-container-high border border-outline-variant/30 flex items-center justify-center gap-2 text-sm"><span class="material-symbols-outlined text-[18px]">close</span>Dismiss</button>
+      </div>
+    </div>
+    {% if has_value %}${item.{{ value_field_prefix }}_text ? `<p class="text-sm text-on-surface-variant mt-4 italic">{{ value_label }}: ${escapeHtml(item.{{ value_field_prefix }}_text)}</p>` : ''}{% endif %}
+
+    ${item.notes ? `<p class="text-sm text-on-surface-variant mt-2">${escapeHtml(item.notes)}</p>` : ''}
+    {% if artifact_enabled %}
+    <div class="mt-4 border-t border-surface-container-high pt-4">
+      <div class="flex flex-wrap gap-3 items-center">
+        ${art.hasFile ? `<button onclick="revealArtifact(${item.id})" class="bg-primary text-on-primary font-bold py-2 px-5 rounded-full squishy-btn transition-all flex items-center justify-center gap-2 text-sm"><span class="material-symbols-outlined text-[18px]">folder_open</span>Reveal file</button>` : ''}
+        ${art.hasFile ? `<button onclick="document.getElementById('${draftId}').classList.toggle('hidden')" class="text-primary font-label-caps text-label-caps flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">visibility</span>Preview</button>` : ''}
+        ${!art.hasFile && !art.requested ? `<button onclick="requestArtifact(${item.id})" class="bg-surface-container text-on-background font-bold py-2 px-5 rounded-full squishy-btn transition-all hover:bg-surface-container-high border border-outline-variant/30 flex items-center justify-center gap-2 text-sm"><span class="material-symbols-outlined text-[18px]">edit_note</span>Request {{ artifact_label }}</button>` : ''}
+      </div>
+      <p class="text-xs text-on-surface-variant mt-2">${art.note}</p>
+      ${art.hasFile ? `<div id="${draftId}" class="hidden mt-3 text-sm text-on-surface-variant bg-surface-container-low p-4 rounded-lg whitespace-pre-wrap">${escapeHtml(item.{{ artifact_field_prefix }}_draft)}</div>` : ''}
+    </div>
+    {% endif %}
+  </div>`;
+}
+
+async function render() {
+  queueItems = await getJSON('/api/queue');
+  document.getElementById('navQueueCount').textContent = queueItems.length || '';
+  document.getElementById('navQueueCount').style.display = queueItems.length ? 'flex' : 'none';
+  document.getElementById('subtitle').textContent = queueItems.length
+    ? `${queueItems.length} {{ entity_singular }}${queueItems.length === 1 ? '' : 's'} found by the {{ entity_singular }}-scout-agent skill, waiting on your review. Nothing here has been submitted anywhere — open the source, act on it yourself, then mark it.`
+    : `Nothing queued right now. Run the {{ entity_singular }}-scout-agent skill to have it search your target sources and stage candidates here for review.`;
+  document.getElementById('queueList').innerHTML = queueItems.map(queueCardHtml).join('') ||
+    `<div class="bg-white rounded-xl p-8 soft-shadow border border-surface-container-highest text-center text-on-surface-variant">Queue is empty.</div>`;
+}
+
+async function markCommitted(id) {
+  await fetch(`/api/{{ entity_plural }}/${id}/mark-committed`, { method: 'POST' });
+  render();
+}
+async function dismiss(id) {
+  await fetch(`/api/{{ entity_plural }}/${id}/dismiss`, { method: 'POST' });
+  render();
+}
+{% if artifact_enabled %}
+async function requestArtifact(id) {
+  await fetch(`/api/{{ entity_plural }}/${id}/request-{{ artifact_slug }}`, { method: 'POST' });
+  render();
+}
+async function revealArtifact(id) {
+  await fetch(`/api/{{ entity_plural }}/${id}/reveal-{{ artifact_slug }}`, { method: 'POST' });
+}
+{% endif %}
+
+render();
+</script>
+</body></html>

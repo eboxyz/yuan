@@ -1,0 +1,66 @@
+# Proof Bank
+
+Your reusable proof points, in STAR format (Situation/Task, Action, Result).
+The `{{ artifact_slug }}` skill reads this file, matches your entries against
+what a specific {{ entity_singular }} actually calls for, and pulls the best
+1-2 into each {{ artifact_label | lower }} draft — this is what makes a
+tailored draft rather than a generic template filled in with your name.
+
+The `proof-bank-builder` skill (`.claude/skills/proof-bank-builder/`) helps
+grow this file two ways: interviewing you for angles you don't have an entry
+for yet, or taking one strong example and helping you find the different
+angles hiding inside it.
+
+## Format
+
+Each entry is a `##` heading (short label) followed by:
+- **Tags**: comma-separated — mix of domain/skill tags and angle tags (e.g.
+  a behavioral-interview category, a theme a personal statement might ask
+  for, a case-study type). Used for matching against what the target
+  {{ entity_singular }} is actually asking for.
+- **Situation/Task**: 1-2 sentences of context. Merge or split these two
+  however reads more naturally for your domain.
+- **Action**: what you actually did, specifically.
+- **Result**: outcome, quantified where you have a real number. Never
+  invent a metric you don't actually have — an honest qualitative result
+  beats a fabricated number.
+- **Punch version**: a pre-condensed 2-3 sentence version ready to drop
+  into a draft almost as-is.
+
+---
+
+## EXAMPLE — replace with your own entries
+
+**Tags**: _(domain/skill tags), (angle tag)_
+
+**Situation/Task**: _(1-2 sentences of context — what was actually
+happening, what made it hard or notable)_
+
+**Action**: _(what you actually did, specifically — not the job
+description version, the real one)_
+
+**Result**: _(the outcome, with a real number if you have one)_
+
+**Punch version**: _(2-3 sentences, ready to drop into a draft as-is)_
+{% if intake and intake.stories %}
+
+---
+
+## Raw notes from {{ person_name }}'s setup answers (not yet entries)
+
+{{ person_name }}'s own words, unedited. In the first session Claude goes
+through them with {{ person_name }} (the `search-coach` skill), adding
+{{ person_name }}'s answers underneath; `proof-bank-builder` then turns each
+into a full entry above. Until then, a drafter may use the facts here but must
+not add numbers or details that aren't written down.
+{% for story in intake.stories %}
+
+### {{ story.title or intake_labels.prompt[story.prompt] }}
+{% if story.title %}
+
+_Prompt: {{ intake_labels.prompt[story.prompt] }}_
+{% endif %}
+
+{{ story.notes }}
+{% endfor %}
+{% endif %}

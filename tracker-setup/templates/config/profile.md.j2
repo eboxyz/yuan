@@ -1,0 +1,33 @@
+# Profile
+
+{% if intake %}
+{% set about = intake.about_you %}
+Status: STARTER. Built from {{ person_name }}'s setup answers, word for word.
+In the first Claude session, Claude drafts the rest of this file from
+{{ person_name }}'s resume (which stays on this computer) and marks it DRAFT
+until {{ person_name }} approves it. Nothing here should state a fact, number,
+title or employer that isn't in the resume or {{ person_name }}'s own words.
+{% if about.strengths %}
+
+## Strengths ({{ person_name }}'s words)
+
+{{ about.strengths }}
+{% endif %}
+{% if about.links %}
+
+## Links
+
+{% for link in about.links %}
+- {{ link }}
+{% endfor %}
+{% endif %}
+{% else %}
+Add your background/profile doc here — either replace this file's content
+directly, or just drop your existing resume/bio file (whatever it's
+already named, e.g. `jane-doe-resume.pdf`) into this same folder. The
+`{{ entity_singular }}-scout-agent` and `{{ artifact_slug }}` skills check
+this folder for any usable profile doc — you don't need to rename anything
+to `profile.md` or `profile.pdf` for it to be found.
+
+If more than one candidate file exists, this file (`profile.md`) wins.
+{% endif %}

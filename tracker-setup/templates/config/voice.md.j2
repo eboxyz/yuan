@@ -1,0 +1,12 @@
+# Voice samples (optional)
+
+Paste 1-2 past {{ artifact_label | lower }}s you liked here, so the
+`{{ entity_singular }}-scout-agent` skill can match your tone when drafting
+new ones. Delete this file (or leave it empty) if you'd rather it draft in a
+plain, direct, no-fluff style by default.
+{% if intake and intake.about_you.voice_sample %}
+
+## Sample from {{ person_name }}'s setup answers
+
+{{ intake.about_you.voice_sample }}
+{% endif %}

@@ -1,0 +1,79 @@
+<!doctype html>
+<!--
+  Resume template. The design step copies this file, sets --accent, and replaces
+  the placeholder content with the person's approved content. Keep it one column,
+  real text, no images, icons or tables, so applicant tracking systems read it
+  correctly. Remove any section they don't have. Print size: US Letter.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Your Name — Resume</title>
+<style>
+  :root {
+    --accent: #1F3A5F;   /* one of the six options in the skill, or their own */
+    --text: #1d232b;
+    --muted: #5F6B7A;
+    --rule: #D5DAE1;
+  }
+  @page { size: Letter; margin: 0.5in 0.6in; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0 auto; max-width: 7.3in; color: var(--text); background: #fff;
+    font: 10.5pt/1.38 -apple-system, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  }
+  .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 9pt; }
+  header { border-bottom: 2px solid var(--accent); padding-bottom: 6pt; margin-bottom: 8pt; }
+  h1 { color: var(--accent); font-size: 24pt; line-height: 1.1; margin: 0; font-weight: 700; }
+  .title { color: var(--muted); font-size: 11pt; margin-top: 2pt; }
+  .contact { color: var(--muted); margin-top: 2pt; }
+  .contact span + span::before { content: "•"; margin: 0 7pt; }
+  .summary { margin: 0 0 8pt; }
+  h2 {
+    color: var(--accent); font-size: 9pt; letter-spacing: 0.18em; text-transform: uppercase;
+    font-weight: 600; margin: 10pt 0 5pt; padding-bottom: 2pt; border-bottom: 1px solid var(--rule);
+  }
+  .role { margin-bottom: 6pt; break-inside: avoid; }
+  .role-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12pt; }
+  .role-head strong { font-size: 11pt; font-weight: 600; }
+  .dates, .stack { color: var(--muted); }
+  .dates { white-space: nowrap; }
+  ul { margin: 2pt 0 0; padding-left: 14pt; }
+  li { margin: 1pt 0; }
+  li b { font-weight: 700; }
+  .lines p { margin: 1pt 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Your Name</h1>
+  <div class="title">Target Title</div>
+  <div class="contact"><span>City, ST</span><span>phone</span><span>email@example.com</span><span>link</span></div>
+</header>
+
+<p class="summary">One sentence: level and role, years, the specific thing you build or run and who relies on it, and the tools and areas you're strongest in.</p>
+
+<h2>Experience</h2>
+<div class="role">
+  <div class="role-head"><strong>Title · Company</strong><span class="dates mono">Month Year — Month Year</span></div>
+  <div class="stack mono">Tool, Tool, Method</div>
+  <ul>
+    <li>Verb + the specific thing + the constraint + how, ending with the result (<b>before → after</b>).</li>
+    <li>A decision and its reason: deferred X in favor of Y, so that Z.</li>
+  </ul>
+</div>
+
+<h2>Skills</h2>
+<div class="lines">
+  <p><strong>Tools:</strong> …</p>
+  <p><strong>Methods:</strong> …</p>
+  <p><strong>Languages:</strong> …</p>
+</div>
+
+<h2>Projects</h2>
+<p><strong>Project name</strong> — what it is, and who it's for or why it exists.</p>
+
+<h2>Education</h2>
+<p>Degree, Field — School, Year</p>
+</body>
+</html>

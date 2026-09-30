@@ -1,0 +1,10 @@
+{
+  "db_name": {{ db_name | tojson }},
+  "table": {{ entity_plural | tojson }},
+  "notes_table": {{ (entity_singular ~ "_notes") | tojson }},
+  "config_dir": {{ config_dir_name | tojson }},
+  "baseline_stage": {{ baseline_stage | tojson }},
+  "success_stage": {{ success_stage | tojson }},
+  "rejected_stage": {{ closed_stages[0] | tojson }},
+  "final_round_stage": {{ (in_progress_stages[-1] if in_progress_stages else none) | tojson }}
+}

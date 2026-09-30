@@ -1,0 +1,10 @@
+.DS_Store
+__pycache__/
+*.pyc
+.venv/
+
+# Working plan (never ships)
+.plan/
+designs/
+.pid
+portal/.vercel

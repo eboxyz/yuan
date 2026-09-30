@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Starts {{ project_name }}: creates the database on first run, then serves
+# the dashboard at http://localhost:{{ port }}/. Safe to run as often as you like.
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")"
+
+DB="{{ db_name }}"
+PORT="{{ port }}"
+
+if ! command -v pg_isready >/dev/null 2>&1 || ! pg_isready -q; then
+  echo "Postgres isn't running. Start it, then run ./start.sh again:"
+  echo "  macOS:  brew services start postgresql@16   (or open Postgres.app)"
+  echo "  Linux:  sudo systemctl start postgresql"
+  exit 1
+fi
+
+if ! psql -lqt | cut -d '|' -f1 | grep -qw "$DB"; then
+  echo "Creating database $DB..."
+  createdb "$DB"
+fi
+
+if [ "$(psql -d "$DB" -tAc "SELECT to_regclass('public.{{ entity_plural }}') IS NOT NULL")" != "t" ]; then
+  echo "Setting up tables..."
+  psql -q -d "$DB" -f db/schema.sql
+fi
+
+if [ ! -x .venv/bin/uvicorn ]; then
+  echo "Installing Python packages (first run only)..."
+  python3 -m venv .venv
+  .venv/bin/pip install -q "psycopg[binary]" fastapi "uvicorn[standard]"
+fi
+
+echo "Dashboard: http://localhost:$PORT/   (Ctrl+C to stop)"
+if [ "${JST_NO_OPEN:-}" != 1 ]; then
+  ( sleep 2; { open "http://localhost:$PORT/" || xdg-open "http://localhost:$PORT/"; } >/dev/null 2>&1 ) &
+fi
+exec .venv/bin/uvicorn api.server:app --port "$PORT"

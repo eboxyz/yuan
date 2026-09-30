@@ -1,0 +1,304 @@
+{% import "dashboard/_partials.j2" as p with context %}
+<!DOCTYPE html>
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+{{ p.theme_head(entity_plural_label) }}
+<style>
+  .input-swell:focus { border-width: 3px; border-color: #b71422; outline: none; }
+  .filter-chip.active { background-color: #db3237; color: #fffbff; }
+</style>
+</head>
+<body class="font-body-md text-on-background flex h-full overflow-hidden antialiased">
+{{ p.sidebar_nav("entities") }}
+<div class="flex-1 flex flex-col h-full overflow-hidden relative w-full">
+<header class="flex justify-between items-center w-full px-4 md:px-section-margin py-unit h-20 sticky top-0 z-40 bg-background/80 backdrop-blur-md flex-shrink-0">
+{{ p.mobile_brand() }}
+<div class="hidden md:block">
+<h2 class="font-headline-lg text-headline-lg text-on-background">{{ entity_plural_label }}</h2>
+</div>
+{{ p.avatar_badge() }}
+</header>
+<main class="flex-1 overflow-y-auto px-4 md:px-section-margin pb-24 md:pb-8 w-full">
+<div class="md:hidden mb-6 mt-2">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-background">{{ entity_plural_label }}</h2>
+</div>
+<div class="flex flex-col lg:flex-row gap-4 mb-8">
+<div class="relative flex-1 max-w-md">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input id="search" class="w-full pl-12 pr-4 py-3 rounded-full border-2 border-surface-container-high bg-white font-body-md text-body-md text-on-background placeholder-on-surface-variant input-swell transition-all" placeholder="Search {{ primary_label | lower }}, {{ secondary_label | lower }}..." type="text"/>
+</div>
+{% if has_category %}<div class="flex gap-3 overflow-x-auto pb-2 items-center" id="filterChips"></div>{% endif %}
+
+<div class="relative w-full lg:w-56">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">list_alt</span>
+<select id="stageFilter" class="w-full appearance-none pl-12 pr-8 py-3 rounded-full border-2 border-surface-container-high bg-white font-label-caps text-label-caps text-on-background input-swell transition-all">
+<option value="All">All Stages</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-lg">expand_more</span>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="cardGrid"></div>
+</main>
+</div>
+{{ p.mobile_nav("entities") }}
+
+<div id="drawerBackdrop" class="hidden fixed inset-0 bg-black/30 z-50"></div>
+<aside id="drawer" class="hidden fixed top-0 right-0 h-full w-full sm:w-[440px] bg-background z-50 shadow-2xl flex flex-col" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+<div class="flex items-start justify-between gap-4 p-6 border-b border-surface-container-high">
+<div class="min-w-0">
+<h3 id="drawerTitle" class="font-headline-md text-xl text-on-background leading-tight"></h3>
+<p id="drawerSub" class="text-sm text-on-surface-variant mt-1"></p>
+</div>
+<button id="drawerClose" type="button" aria-label="Close details" class="w-10 h-10 rounded-full hover:bg-surface-container-high flex items-center justify-center flex-shrink-0"><span class="material-symbols-outlined">close</span></button>
+</div>
+<div class="flex-1 overflow-y-auto p-6 space-y-8">
+<p id="drawerError" role="alert" class="hidden text-sm text-error bg-error-container rounded-lg px-4 py-3"></p>
+<section>
+<label for="drawerStage" class="block font-label-caps text-label-caps text-on-surface-variant mb-2">Stage</label>
+<select id="drawerStage" class="w-full rounded-full border-2 border-surface-container-high bg-white px-4 py-3 font-label-caps text-label-caps text-on-background"></select>
+</section>
+<section>
+<h4 class="font-label-caps text-label-caps text-on-surface-variant mb-2">Next step</h4>
+<input id="stepText" type="text" maxlength="300" placeholder="e.g. Phone screen with the hiring manager" class="w-full rounded-lg border-2 border-surface-container-high bg-white px-4 py-3 text-sm mb-2"/>
+<div class="flex gap-2">
+<input id="stepDate" type="date" aria-label="Next step date" class="flex-1 rounded-lg border-2 border-surface-container-high bg-white px-4 py-3 text-sm"/>
+<button id="stepSave" type="button" class="rounded-full bg-primary text-on-primary font-label-caps text-label-caps px-5">Save</button>
+<button id="stepClear" type="button" class="rounded-full border-2 border-surface-container-high font-label-caps text-label-caps px-4 text-on-surface-variant">Clear</button>
+</div>
+</section>
+<section>
+<h4 class="font-label-caps text-label-caps text-on-surface-variant mb-2">Notes</h4>
+<textarea id="noteText" rows="3" maxlength="4000" placeholder="Add a note (what happened, who you talked to, what's next)" class="w-full rounded-lg border-2 border-surface-container-high bg-white px-4 py-3 text-sm mb-2"></textarea>
+<button id="noteAdd" type="button" class="rounded-full bg-primary text-on-primary font-label-caps text-label-caps px-5 py-2">Add note</button>
+<ul id="noteList" class="mt-4 space-y-3"></ul>
+</section>
+<section id="drawerLinks" class="flex flex-col gap-2"></section>
+</div>
+</aside>
+
+<script src="/app.js"></script>
+<script>
+let allItems = [];
+let activeStage = 'All';
+{% if has_category %}let activeCategory = 'All';{% endif %}
+
+let searchTerm = '';
+
+const ALL_STAGES = {{ stages | tojson }};
+const STAGE_FILTERS = { All: () => true };
+ALL_STAGES.forEach(stage => { STAGE_FILTERS[stage] = i => i.current_stage === stage; });
+{% if has_category %}
+
+function renderCategoryChips() {
+  const categories = [...new Set(allItems.map(i => i.{{ category_field }}).filter(Boolean))].sort();
+  const el = document.getElementById('filterChips');
+  const names = ['All', ...categories];
+  el.innerHTML = names.map(name => {
+    const count = name === 'All' ? allItems.length : allItems.filter(i => i.{{ category_field }} === name).length;
+    const active = name === activeCategory;
+    return `<button data-category="${escapeHtml(name)}" class="filter-chip ${active ? 'active bg-primary-container text-on-primary-container' : 'bg-white border-2 border-surface-container-high text-on-surface-variant hover:border-outline'} font-label-caps text-label-caps px-5 py-2 rounded-full whitespace-nowrap transition-colors">${escapeHtml(name)} (${count})</button>`;
+  }).join('');
+  el.querySelectorAll('[data-category]').forEach(btn => {
+    btn.addEventListener('click', () => { activeCategory = btn.dataset.category; renderCategoryChips(); renderCards(); });
+  });
+}
+{% endif %}
+
+function populateStageFilter() {
+  const sel = document.getElementById('stageFilter');
+  ALL_STAGES.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    sel.appendChild(opt);
+  });
+  updateStageCounts();
+  sel.addEventListener('change', e => { activeStage = e.target.value; renderCards(); });
+}
+
+function updateStageCounts() {
+  const sel = document.getElementById('stageFilter');
+  [...sel.options].forEach(opt => {
+    if (opt.value !== 'All') opt.textContent = `${opt.value} (${allItems.filter(STAGE_FILTERS[opt.value]).length})`;
+  });
+}
+
+function cardHtml(i) {
+  const isClosed = CLOSED_STAGES.includes(i.current_stage);
+  const isSuccess = i.current_stage === {{ success_stage | tojson }};
+  const baseClasses = isClosed
+    ? 'bg-white/60 rounded-xl p-6 border border-outline-variant/30 flex flex-col relative grayscale-[30%] hover:grayscale-0 transition-all'
+    : isSuccess
+      ? 'bg-white rounded-xl p-6 soft-shadow border-2 border-tertiary-fixed-dim flex flex-col relative hover:translate-y-[-2px] transition-transform'
+      : 'bg-white rounded-xl p-6 soft-shadow border border-surface-container-highest flex flex-col relative hover:translate-y-[-2px] transition-transform';
+  const opacity = isClosed ? 'opacity-70' : '';
+  const star = isSuccess ? `<div class="absolute -top-3 -right-3 bg-secondary-container text-on-secondary-container w-8 h-8 rounded-full flex items-center justify-center shadow-md"><span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">star</span></div>` : '';
+  const link = i.source_link ? `<a href="${escapeHtml(i.source_link)}" target="_blank" rel="noopener" title="Open link" class="w-8 h-8 rounded-full bg-surface-variant border-2 border-white flex items-center justify-center text-xs hover:bg-surface-container-high">🔗</a>` : '';
+  const noteIcon = i.notes ? `<span title="${escapeHtml(i.notes)}" class="w-8 h-8 rounded-full bg-surface-variant border-2 border-white flex items-center justify-center text-xs cursor-help">📝</span>` : '';
+  {% if has_value %}const valueBadge = isSuccess && (i.{{ value_field_prefix }}_max || i.{{ value_field_prefix }}_text) ? `<p class="text-sm font-bold text-tertiary">${escapeHtml(fmtValueRange(i))}</p>` : '';{% endif %}
+
+
+  const nextStep = i.next_step_date ? `<p class="text-xs font-bold text-primary mt-1">Next: ${fmtDateShort(i.next_step_date)}${i.next_step ? ' · ' + escapeHtml(i.next_step) : ''}</p>` : '';
+
+  return `
+  <div class="${baseClasses} cursor-pointer" data-id="${i.id}">
+    ${star}
+    <div class="absolute top-4 right-4">
+      <button type="button" data-open="${i.id}" aria-label="Open details for ${escapeHtml(i.{{ primary_field }})}" class="text-outline-variant hover:text-primary transition-colors"><span class="material-symbols-outlined">more_vert</span></button>
+    </div>
+    <div class="flex items-center gap-4 mb-4 ${opacity}">
+      <div class="w-14 h-14 rounded-full ${entityAvatarBg(i.{{ primary_field }})} flex items-center justify-center shadow-sm"><span class="text-2xl leading-none">${entityEmoji(i.{{ primary_field }})}</span></div>
+      <div>
+        <h3 class="font-headline-md text-xl text-on-background leading-tight mb-1">${escapeHtml(i.{{ primary_field }})}</h3>
+        <p class="font-body-md text-sm text-on-surface-variant">${escapeHtml(i.location || 'Location not specified')}</p>
+        {% if has_category %}${i.{{ category_field }} ? `<span class="inline-block mt-1 text-[11px] font-label-caps text-on-surface-variant bg-surface-container-low px-2 py-0.5 rounded-full">${escapeHtml(i.{{ category_field }})}</span>` : ''}{% endif %}
+
+      </div>
+    </div>
+    <div class="mb-6 ${opacity}">
+      <h4 class="font-body-lg text-lg text-on-background font-bold mb-1">${escapeHtml(i.{{ secondary_field }})}</h4>
+      <p class="font-body-md text-sm text-on-surface-variant">{{ baseline_stage }}: ${fmtDateLong(i.date_first_contact)}</p>
+      ${nextStep}
+    </div>
+    <div class="mt-auto pt-4 border-t border-surface-container-high flex justify-between items-center ${opacity}">
+      ${stageChipHtml(i.current_stage)}
+      <div class="flex items-center gap-2">
+        {% if has_value %}${valueBadge}{% endif %}
+
+        <div class="flex -space-x-2">${link}${noteIcon}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderCards() {
+  const term = searchTerm.trim().toLowerCase();
+  const filtered = allItems
+    .filter(STAGE_FILTERS[activeStage])
+    {% if has_category %}.filter(i => activeCategory === 'All' || i.{{ category_field }} === activeCategory){% endif %}
+
+    .filter(i => !term || (i.{{ primary_field }} || '').toLowerCase().includes(term) || (i.{{ secondary_field }} || '').toLowerCase().includes(term))
+    .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+  document.getElementById('cardGrid').innerHTML = filtered.length
+    ? filtered.map(cardHtml).join('')
+    : `<p class="text-on-surface-variant col-span-full text-center py-12">No {{ entity_plural }} match.</p>`;
+}
+
+// ---- Detail drawer: change stage, schedule the next step, keep notes ----
+let openId = null;
+const $ = id => document.getElementById(id);
+
+function currentItem() { return allItems.find(i => i.id === openId); }
+
+function showDrawerError(msg) {
+  const el = $('drawerError');
+  el.textContent = msg || '';
+  el.classList.toggle('hidden', !msg);
+}
+
+async function refreshItems() {
+  allItems = await getJSON('/api/{{ entity_plural }}');
+  updateStageCounts();
+  renderCards();
+}
+
+function renderDrawer() {
+  const i = currentItem();
+  if (!i) return;
+  $('drawerTitle').textContent = i.{{ primary_field }};
+  $('drawerSub').textContent = i.{{ secondary_field }} || '';
+  $('drawerStage').innerHTML = ALL_STAGES.map(name =>
+    `<option value="${escapeHtml(name)}"${name === i.current_stage ? ' selected' : ''}>${escapeHtml(name)}</option>`).join('');
+  $('stepText').value = i.next_step || '';
+  $('stepDate').value = i.next_step_date || '';
+  const links = [];
+  if (i.source_link) links.push(`<a href="${escapeHtml(i.source_link)}" target="_blank" rel="noopener" class="text-sm text-primary underline">Open the original listing</a>`);
+  {% if has_scout_agent and artifact_enabled %}
+  if (i.{{ artifact_field_prefix }}_file_path) links.push(`<a href="/api/{{ entity_plural }}/${i.id}/download-{{ artifact_slug }}" class="text-sm text-primary underline">Download the drafted {{ artifact_label | lower }}</a>`);
+  {% endif %}
+  $('drawerLinks').innerHTML = links.join('');
+}
+
+async function loadNotes() {
+  if (openId == null) return;
+  const forId = openId;
+  const notes = await getJSON(`/api/{{ entity_plural }}/${forId}/notes`);
+  if (forId !== openId) return;
+  $('noteList').innerHTML = notes.length ? notes.map(n => `
+    <li class="bg-white rounded-lg border border-surface-container-high p-3">
+      <p class="text-sm whitespace-pre-wrap">${escapeHtml(n.note)}</p>
+      <p class="text-xs text-on-surface-variant mt-2">${n.stage_at_time ? escapeHtml(n.stage_at_time) + ' · ' : ''}${relativeTime(n.created_at)}</p>
+    </li>`).join('') : '<li class="text-sm text-on-surface-variant">No notes yet.</li>';
+}
+
+function openDrawer(id) {
+  openId = id;
+  showDrawerError('');
+  $('noteText').value = '';
+  renderDrawer();
+  $('drawer').classList.remove('hidden');
+  $('drawerBackdrop').classList.remove('hidden');
+  $('drawerClose').focus();
+  loadNotes().catch(e => showDrawerError(e.message));
+}
+
+function closeDrawer() {
+  openId = null;
+  $('drawer').classList.add('hidden');
+  $('drawerBackdrop').classList.add('hidden');
+}
+
+async function drawerAction(fn) {
+  showDrawerError('');
+  try { await fn(); } catch (e) { showDrawerError(e.message); renderDrawer(); }
+}
+
+function wireDrawer() {
+  $('cardGrid').addEventListener('click', e => {
+    if (e.target.closest('a')) return;
+    const card = e.target.closest('[data-id]');
+    if (card) openDrawer(Number(card.dataset.id));
+  });
+  $('drawerClose').addEventListener('click', closeDrawer);
+  $('drawerBackdrop').addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && openId != null) closeDrawer(); });
+
+  $('drawerStage').addEventListener('change', e => drawerAction(async () => {
+    await postJSON(`/api/{{ entity_plural }}/${openId}/set-stage`, { stage: e.target.value });
+    await refreshItems();
+    renderDrawer();
+  }));
+  $('stepSave').addEventListener('click', () => drawerAction(async () => {
+    await postJSON(`/api/{{ entity_plural }}/${openId}/schedule`, {
+      next_step: $('stepText').value.trim() || null,
+      next_step_date: $('stepDate').value || null,
+    });
+    await refreshItems();
+    renderDrawer();
+  }));
+  $('stepClear').addEventListener('click', () => drawerAction(async () => {
+    await postJSON(`/api/{{ entity_plural }}/${openId}/schedule`, { next_step: null, next_step_date: null });
+    await refreshItems();
+    renderDrawer();
+  }));
+  $('noteAdd').addEventListener('click', () => drawerAction(async () => {
+    const text = $('noteText').value.trim();
+    if (!text) throw new Error('Write something first.');
+    await postJSON(`/api/{{ entity_plural }}/${openId}/notes`, { note: text });
+    $('noteText').value = '';
+    await loadNotes();
+  }));
+}
+
+async function init() {
+  allItems = await getJSON('/api/{{ entity_plural }}');
+  {% if has_category %}renderCategoryChips();{% endif %}
+
+  populateStageFilter();
+  renderCards();
+  wireDrawer();
+  document.getElementById('search').addEventListener('input', e => { searchTerm = e.target.value; renderCards(); });
+}
+init();
+</script>
+</body></html>

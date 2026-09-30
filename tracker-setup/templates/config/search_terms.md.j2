@@ -1,0 +1,55 @@
+# Search Terms & Sources
+
+Used by the `{{ entity_singular }}-scout-agent` skill
+(`.claude/skills/{{ entity_singular }}-scout-agent/`) to find candidate
+{{ entity_plural }}. Edit this file any time to retarget the search — the
+skill reads it fresh on every run.
+
+## Search terms
+
+{% if job_sources %}
+_(job titles or keywords that should appear in a posting's title, e.g.
+"staff backend" or "platform engineer". The scout's helper tools use these as
+filters on job boards{% if 'web' in scout_sources %}, and web search uses them as queries{% endif %}. All the words in
+one line must appear in a title, so keep each line short.)_
+{% else %}
+_(fill in the terms that describe what you're looking for — e.g. specific
+keywords, categories, or filters relevant to {{ project_name }})_
+{% endif %}
+
+{% if intake %}
+{% for t in intake.where_to_look.titles %}
+- {{ t }}
+{% endfor %}
+
+_(Starter list: the titles from {{ person_name }}'s setup answers. In the
+first Claude session, Claude suggests other common names for the same jobs and
+adds only the ones {{ person_name }} approves.)_
+{% else %}
+- _(term 1)_
+- _(term 2)_
+- _(term 3)_
+{% endif %}
+
+## Sources ({{ source_label }}s)
+
+{% if job_sources %}
+Already handled by ready-made tools, so there is nothing to add for these:
+**{{ job_sources | join(', ') }}**.
+{% if 'web' in scout_sources %}
+
+Web search is also on. List any extra sites worth searching below.
+{% endif %}
+{% else %}
+_(list the actual sites/boards/directories to search — the more specific,
+the better the agent's results)_
+{% endif %}
+{% if not job_sources or 'web' in scout_sources %}
+
+- _(source 1 — what makes it worth checking)_
+- _(source 2 — what makes it worth checking)_
+{% endif %}
+
+## By location
+
+_(if relevant, note how to narrow by location — append to any term above)_

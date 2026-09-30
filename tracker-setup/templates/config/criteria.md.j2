@@ -1,0 +1,227 @@
+{% if has_coaching %}
+{% macro items(values, placeholder) %}
+{% if values %}
+{% for v in values %}
+- {{ v }}
+{% endfor %}
+{% else %}
+- {{ placeholder }}
+{% endif %}
+{% endmacro %}
+{% macro named(field, values) %}{% for v in values %}{{ intake_labels[field][v] }}{{ ", " if not loop.last }}{% endfor %}{% endmacro %}
+{% set want = intake.what_you_want if intake else {} %}
+{% set auth = intake.work_authorization if intake else {} %}
+{% set risk = intake.risk if intake else {} %}
+{% set look = intake.where_to_look if intake else {} %}
+{% set L = intake_labels %}
+# What {{ person_name or "you" }} {{ "wants" if person_name else "want" }}
+
+{% if intake %}
+Started from {{ person_name }}'s setup answers, word for word.
+{% else %}
+Fill this in with Claude (the `search-coach` skill asks the questions) or by hand.
+{% endif %}
+{% if has_scout_agent %}
+The `{{ entity_singular }}-scout-agent` reads this fresh on every run to decide
+what counts as a good match.
+{% endif %}
+Claude keeps it in view when you talk about roles, interviews and offers, and
+updates it in your words, with your OK, when your thinking changes. A blank
+field means "no constraint"; nobody guesses.
+
+## What matters most (ranked)
+
+{% if want.priorities %}
+{% for p in want.priorities %}
+{{ loop.index }}. {{ L.priorities[p] }}
+{% endfor %}
+{% else %}
+1. _(fill in: pay, work-life balance, where and how you work, stability, growth, team and manager, or what the company does)_
+2. _(fill in)_
+3. _(fill in)_
+{% endif %}
+
+- What I'd give up for #1: {{ want.tradeoff or "_(fill in)_" }}
+
+## Pay package
+
+- Base floor: {{ want.pay_floor or "_(fill in)_" }}
+- Other parts that matter: {{ named("pay_other", want.pay_other) if want.pay_other else "_(e.g. bonus, equity, health insurance, retirement match)_" }}
+{% if want.pay_notes %}
+- Notes: {{ want.pay_notes }}
+{% endif %}
+
+## Balance
+
+{{ want.balance or "_(hours, on-call, travel: your limits)_" }}
+
+## Where
+
+- Open to: {{ named("work_arrangements", want.work_arrangements) if want.work_arrangements else "_(remote, hybrid, in the office)_" }}
+- Locations and commute: {{ want.locations or "_(fill in)_" }}
+
+## Company size and stage
+
+- Prefer: {{ named("company_size", want.company_size) if want.company_size else "_(no preference yet)_" }}
+{% if want.company_size_why %}
+- Why: {{ want.company_size_why }}
+{% endif %}
+
+## Timeline
+
+{{ want.timeline or "_(how long you can search before pressure starts making the choice)_" }}
+
+## Work authorization
+
+{% if auth %}
+{% if auth.status %}
+- Status: {{ L.status[auth.status] }}
+{% endif %}
+{% if auth.authorized_until %}
+- Authorized until: {{ auth.authorized_until }}
+{% endif %}
+{% if auth.needs %}
+- Needs from an employer: {{ named("needs", auth.needs) }}
+{% endif %}
+{% if auth.green_card_timing %}
+- Green card sponsorship: {{ L.green_card_timing[auth.green_card_timing] }}
+{% endif %}
+{% if auth.notes %}
+- Notes: {{ auth.notes }}
+{% endif %}
+{% else %}
+- Status: _(e.g. no sponsorship needed, OPT, STEM OPT, H-1B; leave blank if it doesn't apply)_
+- Authorized until: _(YYYY-MM-DD, if it applies. Claude checks in as it gets closer)_
+- Needs from an employer: _(e.g. H-1B transfer, green card sponsorship)_
+{% endif %}
+
+General information only, not legal advice. Rules and fees change; check
+current official sources (USCIS, the Department of Labor) or an immigration
+attorney for your own case.
+
+## Risk
+
+{% if risk %}
+{% if risk.comfort %}
+- Comfort with risk right now: {{ L.comfort[risk.comfort] }}
+{% endif %}
+{% if risk.runway %}
+- Savings runway: {{ L.runway[risk.runway] }}
+{% endif %}
+{% if risk.dependents %}
+- Anyone depending on my income: {{ L.dependents[risk.dependents] }}
+{% endif %}
+{% if risk.layoff_impact %}
+- If laid off six months in: {{ risk.layoff_impact }}
+{% endif %}
+{% else %}
+- Comfort with risk right now: _(low, some, high)_
+- If laid off six months in: _(what it would mean for you)_
+{% endif %}
+
+## Roles
+
+{{ items(look.titles, "_(job titles to look for)_") | trim }}
+{% if look.seniority %}
+- Level: {{ look.seniority }}
+{% endif %}
+{% if look.industries_like or look.industries_avoid %}
+
+## Industries
+
+{% if look.industries_like %}
+Drawn to:
+
+{{ items(look.industries_like, "") | trim }}
+{% endif %}
+{% if look.industries_avoid %}
+
+Avoid:
+
+{{ items(look.industries_avoid, "") | trim }}
+{% endif %}
+{% endif %}
+{% if look.companies_like or look.companies_skip %}
+
+## Companies
+
+{% if look.companies_like %}
+Especially interested in:
+
+{{ items(look.companies_like, "") | trim }}
+{% endif %}
+{% if look.companies_skip %}
+
+Skip:
+
+{{ items(look.companies_skip, "") | trim }}
+{% endif %}
+{% endif %}
+
+## Must-haves
+
+{{ items(want.must_haves, "_(e.g. a specific must-have trait for a match)_\n- _(add more as needed)_") | trim }}
+
+## Dealbreakers (what would make you say no even if the pay is great)
+
+{{ items(want.dealbreakers, "_(e.g. a clear disqualifier)_\n- _(add more as needed)_") | trim }}
+{% if artifact_enabled %}
+
+## Profile
+
+Put your background doc in this folder — `profile.md` is preferred (easiest
+for the agent to read and tailor from), but dropping in your existing
+resume/bio file under its own name works too; the agent checks the folder
+for any usable file rather than requiring an exact name.
+
+## Voice (optional)
+
+If you want drafted {{ artifact_label | lower }}s to sound like you, paste
+1-2 past examples you liked into `voice.md` in this folder. Without it, the
+agent drafts in a plain, direct, no-fluff style.
+{% endif %}
+{% else %}
+# Targeting Criteria
+
+Fill this in before the first `{{ entity_singular }}-scout-agent` run — the
+agent uses it to decide what counts as a good match and what to skip. Leave
+a field blank and the agent will treat it as "no constraint" rather than
+guessing.
+{% if has_value %}
+
+## {{ value_label }} floor
+
+- Minimum acceptable: _(fill in)_
+- Anything above and beyond that's a plus but not required: _(describe)_
+{% endif %}
+
+## Location / remote
+
+- Acceptable: _(e.g. specific cities, remote, radius from somewhere, ...)_
+- Dealbreaker: _(e.g. anything requiring relocation)_
+
+## Must-haves
+
+- _(e.g. a specific must-have trait for a match)_
+- _(add more as needed)_
+
+## Dealbreakers / skip if...
+
+- _(e.g. a clear disqualifier)_
+- _(add more as needed)_
+{% if artifact_enabled %}
+
+## Profile
+
+Put your background doc in this folder — `profile.md` is preferred (easiest
+for the agent to read and tailor from), but dropping in your existing
+resume/bio file under its own name works too; the agent checks the folder
+for any usable file rather than requiring an exact name.
+
+## Voice (optional)
+
+If you want drafted {{ artifact_label | lower }}s to sound like you, paste
+1-2 past examples you liked into `voice.md` in this folder. Without it, the
+agent drafts in a plain, direct, no-fluff style.
+{% endif %}
+{% endif %}

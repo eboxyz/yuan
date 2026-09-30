@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# The daily {{ entity_singular }}-scout-agent run, started by the schedule that
+# ./schedule.sh installs. Uses your Claude account, within the run size you
+# chose. Skips the day when setup isn't finished, Postgres isn't running, or
+# {{ skip_if_waiting }}+ {{ entity_plural }} are already waiting for your review.
+# Everything it does is logged to logs/daily_run.log.
+set -uo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")"
+mkdir -p logs
+[ -f .claude/daily_run.env ] && . .claude/daily_run.env
+log() { echo "$(date '+%Y-%m-%d %H:%M') $*" >> logs/daily_run.log; }
+
+# What the unattended run may do without asking. Everything else is denied
+# (--permission-mode dontAsk). Print this list with: ./schedule.sh permissions
+ALLOWED=(
+  "Read" "Write" "Edit" "Glob" "Grep" "WebSearch" "WebFetch" "Skill"
+  "Bash(psql -d {{ db_name }} *)" "Bash(psql -X -d {{ db_name }} *)"
+{% for tool in daily_run_tools %}
+  "Bash(python3 .claude/skills/{{ entity_singular }}-scout-agent/tools/{{ tool }} *)"
+{% endfor %}
+)
+if [ "${1:-}" = "--print-permissions" ]; then printf '%s\n' "${ALLOWED[@]}"; exit 0; fi
+
+[ -f .first_run_done ] || { log "skipped: first-run setup isn't finished"; exit 0; }
+pg_isready -q 2>/dev/null || { log "skipped: Postgres isn't running"; exit 0; }
+WAITING="$(psql -X -d {{ db_name }} -Atc "SELECT count(*) FROM {{ entity_plural }} WHERE current_stage = {{ queued_stage | sqlstr }}" 2>/dev/null || echo "?")"
+case "$WAITING" in
+  ''|*[!0-9]*) log "skipped: couldn't read the review queue"; exit 0 ;;
+esac
+if [ "$WAITING" -ge {{ skip_if_waiting }} ]; then
+  log "skipped: $WAITING already waiting for review (limit {{ skip_if_waiting }})"
+  exit 0
+fi
+CLAUDE_BIN="${CLAUDE_BIN:-$(command -v claude || true)}"
+[ -n "$CLAUDE_BIN" ] || { log "skipped: couldn't find the claude command"; exit 0; }
+
+
+log "started ($WAITING waiting for review)"
+# JST_DAILY_RUN tells the session-start check-in to stay quiet: nobody is there to answer.
+JST_DAILY_RUN=1 "$CLAUDE_BIN" -p "/{{ entity_singular }}-scout-agent This is the scheduled daily run and nobody is watching: don't ask questions, stay within the budget, and end with the usual short summary. Only these commands are allowed: the helper tools written out in full as in the skill (python3 .claude/skills/{{ entity_singular }}-scout-agent/tools/<tool>.py ...) and psql -d {{ db_name }} .... If a command is denied, rewrite it in exactly one of those forms and carry on; don't stop the run for that." \
+  --permission-mode dontAsk --max-turns 200 \
+  --allowedTools "$(IFS=,; echo "${ALLOWED[*]}")" >> logs/daily_run.log 2>&1
+log "finished (exit $?)"

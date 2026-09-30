@@ -1,0 +1,190 @@
+{% import "dashboard/_partials.j2" as p with context %}
+<!DOCTYPE html>
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+{{ p.theme_head("Upcoming") }}
+<style>
+  .btn-squish:active { transform: translateY(2px); box-shadow: 0 4px 15px rgba(74, 66, 56, 0.05); }
+  .card-border { border: 1px solid theme('colors.surface-dim'); }
+  @media (max-width: 767px) { main { padding-bottom: 80px; } }
+</style>
+</head>
+<body class="flex h-full w-full font-body-md text-body-md antialiased overflow-hidden">
+{{ p.sidebar_nav("upcoming") }}
+<main class="flex-1 flex flex-col h-full overflow-y-auto">
+<header class="md:hidden flex justify-between items-center w-full px-section-margin py-unit h-20 sticky top-0 z-40 bg-background/80 backdrop-blur-md">
+{{ p.mobile_brand() }}
+{{ p.avatar_badge() }}
+</header>
+<div class="p-container-padding md:px-section-margin md:py-12 max-w-7xl mx-auto w-full">
+<div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+<div>
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-background mb-2">Upcoming Next Steps</h1>
+<p class="text-on-surface-variant" id="subtitle">Loading…</p>
+</div>
+<div class="flex items-center bg-surface-container rounded-full p-1 self-start md:self-end">
+<button id="btnList" class="bg-secondary-container text-on-secondary-container rounded-full px-6 py-2 font-label-caps text-label-caps shadow-sm">List View</button>
+<button id="btnCal" class="text-on-surface-variant hover:bg-surface-container-high rounded-full px-6 py-2 font-label-caps text-label-caps transition-colors">Calendar</button>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter md:gap-container-padding">
+<div class="lg:col-span-8 flex flex-col gap-6" id="listView"></div>
+<div class="lg:col-span-8 hidden" id="calView">
+<div class="bg-surface-container-lowest rounded-xl p-6 soft-shadow card-border">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-headline-md text-[20px] font-bold text-on-background" id="calTitleBig"></h3>
+<div class="flex gap-2">
+<button id="calPrevBig" class="text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined">chevron_left</span></button>
+<button id="calNextBig" class="text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined">chevron_right</span></button>
+</div>
+</div>
+<div class="grid grid-cols-7 gap-1 text-center text-sm mb-2 font-label-caps text-on-surface-variant">
+<div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+</div>
+<div class="grid grid-cols-7 gap-1 text-center font-body-md text-on-background" id="calGridBig"></div>
+</div>
+</div>
+<div class="lg:col-span-4 flex flex-col gap-container-padding">
+<div class="bg-surface-container-lowest rounded-xl p-6 soft-shadow card-border">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-headline-md text-[20px] font-bold text-on-background" id="calTitle"></h3>
+<div class="flex gap-2">
+<button id="calPrev" class="text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined">chevron_left</span></button>
+<button id="calNext" class="text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined">chevron_right</span></button>
+</div>
+</div>
+<div class="grid grid-cols-7 gap-1 text-center text-sm mb-2 font-label-caps text-on-surface-variant">
+<div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+</div>
+<div class="grid grid-cols-7 gap-1 text-center font-body-md text-on-background" id="calGrid"></div>
+</div>
+</div>
+</div>
+</div>
+</main>
+{{ p.mobile_nav("upcoming") }}
+
+<script src="/app.js"></script>
+<script>
+let allItems = [];
+let calMonth = new Date().getMonth();
+let calYear = new Date().getFullYear();
+
+function buildCalendarGrid(containerId, titleId, eventDates) {
+  const first = new Date(calYear, calMonth, 1);
+  const startDow = first.getDay();
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const todayStr = new Date().toISOString().slice(0, 10);
+  document.getElementById(titleId).textContent = first.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  let cells = '';
+  for (let i = 0; i < startDow; i++) cells += `<div></div>`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const isToday = dateStr === todayStr;
+    const hasEvent = eventDates.has(dateStr);
+    const base = isToday
+      ? 'bg-primary text-on-primary font-bold shadow-sm'
+      : hasEvent
+        ? 'bg-secondary-container text-on-secondary-container font-bold'
+        : 'hover:bg-surface-container';
+    const dot = hasEvent && !isToday ? `<div class="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-on-secondary-container rounded-full"></div>` : (isToday ? `<div class="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full"></div>` : '');
+    cells += `<div class="p-2 rounded-full cursor-pointer transition-colors relative ${base}">${d}${dot}</div>`;
+  }
+  document.getElementById(containerId).innerHTML = cells;
+}
+
+function renderCalendars() {
+  const eventDates = new Set(allItems.filter(i => i.next_step_date).map(i => i.next_step_date));
+  buildCalendarGrid('calGrid', 'calTitle', eventDates);
+  buildCalendarGrid('calGridBig', 'calTitleBig', eventDates);
+}
+
+function groupLabel(dateStr) {
+  const diff = daysUntil(dateStr);
+  if (diff === 0) return 'Today, ' + fmtDateShort(dateStr);
+  if (diff === 1) return 'Tomorrow, ' + fmtDateShort(dateStr);
+  return fmtDateShort(dateStr) + (diff > 0 ? ` (in ${diff} days)` : ` (${-diff} days ago)`);
+}
+
+function upcomingCard(i) {
+  const notesId = 'notes-' + i.id;
+  return `
+  <div class="bg-surface-container-lowest rounded-xl p-6 soft-shadow card-border relative overflow-hidden">
+    <div class="absolute -right-12 -top-12 w-32 h-32 bg-secondary-container rounded-full opacity-20"></div>
+    <div class="flex flex-col md:flex-row gap-6 relative z-10">
+      <div class="flex flex-col items-start md:w-32 flex-shrink-0 border-l-4 border-primary pl-4 md:border-l-0 md:pl-0">
+        <div class="font-headline-md text-headline-md text-primary mb-1">${fmtDateShort(i.next_step_date)}</div>
+        ${stageChipHtml(i.current_stage, 'text-xs')}
+      </div>
+      <div class="flex-grow flex flex-col justify-center">
+        <div class="flex items-center gap-3 mb-2">
+          <div class="w-10 h-10 rounded-full ${entityAvatarBg(i.{{ primary_field }})} flex items-center justify-center shadow-sm"><span class="text-xl leading-none">${entityEmoji(i.{{ primary_field }})}</span></div>
+          <h3 class="font-headline-md text-headline-md text-on-background">${escapeHtml(i.{{ secondary_field }})}</h3>
+        </div>
+        <div class="text-on-surface-variant font-body-lg text-body-lg mb-4">${escapeHtml(i.{{ primary_field }})}${i.location ? ' • ' + escapeHtml(i.location) : ''}</div>
+        <div class="flex items-center gap-2 text-sm text-on-surface-variant bg-surface-container-low p-3 rounded-lg inline-flex max-w-fit">
+          <span class="material-symbols-outlined text-[20px]">flag</span>
+          <span>${escapeHtml(i.next_step || 'Next step not specified')}</span>
+        </div>
+        <div class="hidden mt-3 text-sm text-on-surface-variant bg-surface-container-low p-3 rounded-lg max-w-fit" id="${notesId}">${escapeHtml(i.notes || 'No notes on this one yet.')}</div>
+      </div>
+      <div class="flex flex-row md:flex-col justify-end gap-3 flex-shrink-0 mt-4 md:mt-0">
+        ${i.source_link ? `<a href="${escapeHtml(i.source_link)}" target="_blank" rel="noopener" class="bg-primary text-on-primary font-bold py-3 px-6 rounded-full btn-squish transition-all shadow-md flex items-center justify-center gap-2 w-full md:w-auto"><span class="material-symbols-outlined text-[20px]">open_in_new</span>Open link</a>` : ''}
+        <button onclick="document.getElementById('${notesId}').classList.toggle('hidden')" class="bg-surface-container text-on-background font-bold py-3 px-6 rounded-full btn-squish transition-all hover:bg-surface-container-high border border-outline-variant/30 flex items-center justify-center gap-2 w-full md:w-auto">
+          <span class="material-symbols-outlined text-[20px]">description</span>Notes
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderList() {
+  const upcoming = allItems.filter(i => i.next_step_date && daysUntil(i.next_step_date) >= 0)
+    .sort((a, b) => new Date(a.next_step_date) - new Date(b.next_step_date));
+  document.getElementById('subtitle').textContent = upcoming.length
+    ? `You have ${upcoming.length} next step${upcoming.length === 1 ? '' : 's'} scheduled.`
+    : `Nothing scheduled yet.`;
+  if (!upcoming.length) {
+    document.getElementById('listView').innerHTML = `<p class="text-on-surface-variant bg-surface-container-lowest rounded-xl p-6 soft-shadow card-border">Nothing scheduled yet — set a <code>next_step_date</code> on a {{ entity_singular }} (see README) once one's booked, and it'll show up here automatically.</p>`;
+    return;
+  }
+  let html = '';
+  let lastLabel = null;
+  for (const i of upcoming) {
+    const label = groupLabel(i.next_step_date);
+    if (label !== lastLabel) {
+      html += `<div class="flex items-center gap-4 ${lastLabel ? 'mt-4' : ''}"><h2 class="font-body-lg text-body-lg text-on-background">${label}</h2><div class="h-[1px] bg-outline-variant flex-grow"></div></div>`;
+      lastLabel = label;
+    }
+    html += upcomingCard(i);
+  }
+  document.getElementById('listView').innerHTML = html;
+}
+
+async function init() {
+  allItems = await getJSON('/api/{{ entity_plural }}');
+  renderList();
+  renderCalendars();
+
+  document.getElementById('btnList').addEventListener('click', () => {
+    document.getElementById('listView').classList.remove('hidden');
+    document.getElementById('calView').classList.add('hidden');
+    document.getElementById('btnList').className = 'bg-secondary-container text-on-secondary-container rounded-full px-6 py-2 font-label-caps text-label-caps shadow-sm';
+    document.getElementById('btnCal').className = 'text-on-surface-variant hover:bg-surface-container-high rounded-full px-6 py-2 font-label-caps text-label-caps transition-colors';
+  });
+  document.getElementById('btnCal').addEventListener('click', () => {
+    document.getElementById('listView').classList.add('hidden');
+    document.getElementById('calView').classList.remove('hidden');
+    document.getElementById('btnCal').className = 'bg-secondary-container text-on-secondary-container rounded-full px-6 py-2 font-label-caps text-label-caps shadow-sm';
+    document.getElementById('btnList').className = 'text-on-surface-variant hover:bg-surface-container-high rounded-full px-6 py-2 font-label-caps text-label-caps transition-colors';
+  });
+  const step = (dm) => { calMonth += dm; if (calMonth < 0) { calMonth = 11; calYear--; } if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendars(); };
+  document.getElementById('calPrev').addEventListener('click', () => step(-1));
+  document.getElementById('calNext').addEventListener('click', () => step(1));
+  document.getElementById('calPrevBig').addEventListener('click', () => step(-1));
+  document.getElementById('calNextBig').addEventListener('click', () => step(1));
+}
+init();
+</script>
+</body></html>

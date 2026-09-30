@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "basics": {
+    "preferred_name": "   ",
+    "favorite_color": "green"
+  },
+  "where_to_look": {
+    "titles": []
+  },
+  "job_finder": {
+    "run_size": "huge",
+    "sources": [
+      "newspaper"
+    ]
+  },
+  "stories": [
+    {
+      "prompt": "hard_call",
+      "notes": "0"
+    },
+    {
+      "prompt": "hard_call",
+      "notes": "1"
+    },
+    {
+      "prompt": "hard_call",
+      "notes": "2"
+    },
+    {
+      "prompt": "hard_call",
+      "notes": "3"
+    },
+    {
+      "prompt": "hard_call",
+      "notes": "4"
+    },
+    {
+      "prompt": "hard_call",
+      "notes": "5"
+    },
+    {
+      "prompt": "hard_call",
+      "notes": "6"
+    },
+    {
+      "notes": "no prompt"
+    }
+  ],
+  "what_you_want": {
+    "priorities": [
+      "pay",
+      "pay"
+    ]
+  },
+  "work_authorization": {
+    "authorized_until": "2027-02-30",
+    "status": "citizen"
+  }
+}

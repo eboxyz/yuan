@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Yuan: set up your job search tracker</title>
+<meta name="description" content="Answer a few questions about your job search and download a private tracker that Claude builds and runs with you on your own computer.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="#step=welcome"><img src="logo.svg" alt="" width="36" height="36"><span>Yuan</span></a>
+  <span class="saved" id="saved" role="status" aria-live="polite"></span>
+</header>
+<div class="layout">
+  <nav class="progress" aria-label="Setup steps"><ol id="steps"></ol></nav>
+  <main id="panel" class="card"><noscript><p>This page needs JavaScript to build your download. It runs only in your browser and sends nothing anywhere.</p></noscript></main>
+</div>
+<footer>
+  Your answers stay in this browser and go only into the file you download. No accounts, no analytics, nothing sent anywhere.
+  <span id="version"></span>
+</footer>
+<script src="skill-bundle.js"></script>
+<script src="lib.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

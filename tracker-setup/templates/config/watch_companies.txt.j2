@@ -1,0 +1,7 @@
+# Companies to check every run, one per line. Lines starting with # are ignored.
+# The scout looks up each company's public job board (Greenhouse or Ashby) and
+# checks it directly. Names are matched against the board's own name, so use the
+# company's usual name.
+{% for name in watch_companies %}
+{{ name }}
+{% endfor %}

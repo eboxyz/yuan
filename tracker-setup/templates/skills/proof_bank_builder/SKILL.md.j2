@@ -1,0 +1,111 @@
+---
+name: proof-bank-builder
+description: Interactively grow {{ config_dir_name }}/proof_bank.md — either by interviewing you for angles you don't have an entry for yet, or by taking one strong example and helping find the different angles hiding inside it. Two separate modes, same output file.
+---
+
+# Proof bank builder
+
+This is a conversation, not a one-shot generation — the value is in asking
+good follow-up questions, not in producing plausible-sounding STAR text
+from thin context. Never invent Situation/Action/Result details you haven't
+actually been told; if an answer is vague, ask a sharper follow-up instead
+of filling the gap yourself.
+
+Two modes. Ask which one is wanted if it's not obvious from how the
+conversation opened ("I don't have an entry for X" → Mode A; "I have a
+great example, help me get more out of it" → Mode B).
+
+## Mode A — New situation interview
+
+**Goal**: fill gaps in angle coverage, not just accumulate more entries
+about the same few angles.
+
+1. Read `{{ config_dir_name }}/proof_bank.md` and list the angles already
+   covered (the angle tags on existing entries).
+
+2. Compare against categories worth checking for — adapt this list to the
+   actual domain rather than treating it as exhaustive:
+   - Something that didn't go as planned, and their own part in it (not
+     just "received tough feedback and was right") — a time the outcome was
+     actually bad and what happened next
+   - Seeing a problem differently from someone more senior, and how it was
+     handled
+   - Helping someone else grow or improve
+   - Pushing back on scope *before* something went wrong, not after
+   - Learning something unfamiliar fast under real pressure
+   - A judgment call under genuine ambiguity (not enough information to
+     be sure, had to decide anyway)
+   - Explaining something complex to someone without the background for it
+
+3. Pick one gap, ask directly whether there's an entry for it. If yes,
+   interview for the specifics — don't accept a one-line summary as done:
+   - What was actually happening — what made it hard, specifically?
+   - What did you actually decide to do, and what were you choosing *not*
+     to do?
+   - What happened as a result — and if there's a real number, ask for it
+     directly rather than letting it stay vague.
+   - Would this be framed differently for a different kind of ask (this is
+     the bridge into Mode B if a rich-enough example comes up)?
+
+4. Write it into `proof_bank.md` in the established format (Tags,
+   Situation/Task, Action, Result, Punch version) — append, don't overwrite
+   existing entries. Draft the punch version from what you were told, then
+   show it back for a sanity check before considering the entry done —
+   the person's own phrasing beats a generic compression.
+
+5. Move to the next gap only if there's appetite to keep going in this
+   session; otherwise stop at one well-developed entry rather than rushing
+   through a checklist.
+
+## Mode B — Multi-angle extraction from one example
+
+**Goal**: the same underlying example can often answer several different
+asks if told from a different angle.
+
+1. Get a description of the example in the person's own words first,
+   broadly — don't start from an existing `proof_bank.md` entry and just
+   paraphrase it; ask what happened as if for the first time, since a full
+   retelling surfaces details a summary already dropped.
+
+2. Probe for the different angles a single example usually contains:
+   - **Technical/craft angle**: what was the hard decision, what were the
+     tradeoffs, what would a weaker version of this have looked like?
+   - **Seeing-it-differently angle**: did anyone see the approach
+     differently, push back, or give critical feedback along the way? How
+     was it handled?
+   - **Ambiguity angle**: was there a point with real uncertainty about the
+     right call, before it was obvious in hindsight?
+   - **Leadership/influence angle**: did this require getting other people
+     aligned or moving?
+   - **Didn't-go-as-planned angle**: did anything go wrong or not land as
+     intended along the way, even if the overall thing succeeded?
+   - **Ownership angle**: was anything done beyond what was strictly asked,
+     and why?
+
+3. For each angle that has a genuinely distinct, well-supported answer
+   (don't force all six — most examples yield 2-3 real angles, not all of
+   them), draft a separate `##` entry: same underlying example, an explicit
+   note at the top ("*Same underlying example as [other entry] — different
+   angle*"), its own Tags reflecting that specific angle, and its own
+   Situation/Task/Action/Result told from that angle's perspective (the
+   Situation and Task often need to reframe, not just the Action/Result).
+
+4. Append all resulting entries to `proof_bank.md`, cross-referenced with
+   each other.
+
+## Shared rules for both modes
+
+- Coach, don't collect: one question at a time, and say why you're asking.
+  If they only say "we", ask what their own part was; interviewers need to
+  hear it, and saying it isn't bragging. No empty praise, no blunt verdicts;
+  say what would help and ask for it.
+
+- Match the existing file's Tags convention: mix of domain/skill tags and
+  angle tags, comma-separated.
+- Never fabricate a metric. If there's no number, write the qualitative
+  result honestly — flag it (e.g. `[NEEDS INPUT — a real number would land
+  better here]`) if a number is clearly needed for the entry to land and
+  isn't available yet, rather than inventing one or leaving it vague.
+- End every new entry with a Punch version, and read it back — the point
+  is that it's ready to drop into a draft almost as-is, so it needs to
+  sound like the actual person, not a compressed summary of them.

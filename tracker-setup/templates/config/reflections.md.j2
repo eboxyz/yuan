@@ -1,0 +1,8 @@
+# Reflections
+
+What {{ person_name or "you" }} said matters most, and how that changes over
+time. Claude adds a short entry after the first run and after every check-in,
+including skipped ones. Newest at the bottom. Each entry starts with a heading
+like `## 2026-10-03 14:05 — first run` (date, 24-hour time, reason); the
+session-start check-in (`.claude/hooks/checkin.py`) reads those dates to
+decide when the next check-in is due.

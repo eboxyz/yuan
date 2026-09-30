@@ -1,0 +1,44 @@
+{
+  "project_name": "Apartment Hunt",
+  "app_display_name": "NestQuest",
+  "tagline": "Keep hunting!",
+  "icon": "home",
+  "db_name": "apartment_hunt_tracker",
+  "port": 8421,
+
+  "entity_singular": "listing",
+  "entity_plural": "listings",
+  "primary_field": "building",
+  "primary_label": "Building",
+  "secondary_field": "unit",
+  "secondary_label": "Unit",
+  "source_type_options": ["Self-found", "Inbound (broker)", "Referral"],
+
+  "stages": ["Queued", "Contacted", "Tour Scheduled", "Toured", "Applied", "Approved", "Rejected", "Withdrawn"],
+  "queued_stage": "Queued",
+  "baseline_stage": "Applied",
+  "success_stage": "Approved",
+  "closed_stages": ["Rejected", "Withdrawn"],
+
+  "has_value": true,
+  "value_label": "Rent",
+  "value_field_prefix": "rent",
+
+  "has_category": true,
+  "category_label": "Neighborhood",
+  "category_field": "neighborhood",
+
+  "has_contact": true,
+  "contact_singular": "broker",
+  "contact_plural": "brokers",
+  "contact_org_label": "Agency",
+  "contact_org_field": "agency",
+
+  "has_scout_agent": true,
+  "source_label": "listing site",
+  "artifact_enabled": true,
+  "artifact_label": "Intro message",
+  "artifact_field_prefix": "intro_message",
+
+  "config_dir_name": "apartment_search"
+}

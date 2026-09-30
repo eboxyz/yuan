@@ -1,0 +1,504 @@
+{% set tools = '.claude/skills/' ~ entity_singular ~ '-scout-agent/tools' %}
+{% set uses_hn = 'hn' in scout_sources %}
+{% set uses_yc = 'yc' in scout_sources %}
+{% set uses_web = 'web' in scout_sources %}
+---
+name: {{ entity_singular }}-scout-agent
+description: Search your target {{ source_label }}s for new candidate {{ entity_plural }} within a fixed per-run budget, check whether each calls for {% if artifact_enabled %}{{ artifact_label | lower }} (drafted via the {{ artifact_slug }} skill){% else %}anything drafted{% endif %}, and stage them as {{ queued_stage | tojson }} rows in the {{ db_name }} database for your review. Never submits anything or creates accounts.
+---
+
+# {{ entity_singular | capitalize }} scout agent
+
+Runs one bounded research pass per invocation, finds candidates you aren't
+already tracking, and stages good matches in the tracker for you to review
+and act on yourself. Every run is capped — see Budget below — so a
+scheduled/repeated run can't run away on cost.
+
+Sources this project is set up to use: **{{ scout_sources | join(', ') }}**. Every
+enabled source is covered on every run. To change the list, edit
+`scout_sources` in the project's config and regenerate, or edit the
+sections below directly.
+
+## Hard rules — read before doing anything
+
+- **Never submit an application/form.** No filling out a submission form, no
+  clicking Submit/Apply on any site, ever, for any reason.
+- **Never create an account** on any external site.
+- **Never enter personal data into a form** (name, address, phone, or any
+  other personal identifiers) on any external site.
+- The job this skill does ends at: *find → check whether {% if artifact_enabled %}{{ artifact_label | lower }} is needed{% else %}anything needs drafting{% endif %}
+  → draft{% if artifact_enabled %} (via the {{ artifact_slug }} skill){% endif %} → write a {{ queued_stage | tojson }} row → summarize in
+  chat*. Nothing external gets touched beyond reading public listings/postings.
+- Only read sources that are publicly reachable. Don't log in anywhere or
+  drive a browser session on the user's behalf.
+{% if job_sources %}
+- The helper tools in `{{ tools }}/` only make plain GET requests to public
+  pages and APIs. Never modify them to send data, log in, or use anyone's
+  credentials.
+{% endif %}
+
+## Budget (read this before searching anything)
+
+These numbers exist specifically to keep token spend predictable. Do not
+expand scope mid-run to "try to hit" a number — report honestly if a run
+comes up short rather than searching more sources than planned. The preset
+for this project is **{{ scout_budget_preset }}**; change the numbers in this
+table directly if the defaults don't fit — they were a reasonable starting
+guess, not a fixed rule.
+
+| Parameter | Value |
+|---|---|
+| **Early-exit trigger** | As soon as **{{ scout_candidates_target }} A-tier candidates** (see Match tiers below) are found, stop searching — even if the planned sources/terms or the fetch cap hasn't been used up. Don't keep searching just to fill toward the hard cap — hitting the target in A-tier candidates is "done," not a floor. |
+| Hard cap on candidates queued per run | **{{ scout_candidates_cap }}** — stop immediately on reaching this, mid-search if needed |
+| Sources covered per run | All enabled: {{ scout_sources | join(', ') }} |
+{% if uses_web %}
+| Web-search terms per run | {{ scout_terms_per_run }} (of `search_terms.md`'s list — rotate through the rest on later runs if not "all") |
+{% endif %}
+| Full posting fetches per run (hard cap) | {{ scout_jd_fetch_cap }} — stop fetching more once hit, work with what's been reviewed. Listing results from the helper tools do NOT count; reading one posting's full text does. |
+| Research subagents spawned | {{ scout_subagents_per_run }} per run. Only fan out to more parallel subagents for an explicit manual "deep sweep" you ask for directly — never as the default behavior |
+
+### Match tiers
+
+Used to know when the early-exit trigger fires. Keep this simple — a
+one-line judgment call per candidate, not a scoring rubric:
+
+- **A-tier ("strong")**: meets essentially all of `criteria.md` cleanly — no real gaps.
+- **B-tier ("maybe")**: meets criteria with one real gap flagged (partial-but-real).
+{% if scout_tier_mode == 'strong_only' %}
+  **This project queues strong matches only.** Do not queue B-tier candidates:
+  log each in `reviewed_postings.jsonl` as `rejected` with the reason
+  `maybe (B-tier): <the gap>`, so a future run doesn't re-fetch it.
+{% else %}
+  Still worth queuing, just don't count it toward the early-exit trigger.
+{% endif %}
+{% if has_coaching %}
+- **Their #1 comes first.** `criteria.md` ranks what matters most. An A-tier
+  match has to fit their #1 as far as the posting shows; one that misses it is
+  at best B-tier, and the rationale says so.
+{% endif %}
+- Don't bother tiering rejects — if it doesn't clear the bar to be at least
+  B-tier, it's not a candidate, just note it in `reviewed_postings.jsonl`
+  (below) and move on.
+- **Never pad toward the target with a weak-fit candidate.** If the sources
+  genuinely produce fewer real candidates than the target, queue what's real
+  and say so plainly — don't reach into a borderline-fit candidate from a
+  long-tail source just to round the count up.
+- **Same-company dedup needs content, not just title, comparison.** When a
+  new posting's title differs from an existing tracked row at the same
+  company only by a level word (Senior/Staff/Lead) or minor wording, read
+  both and compare the actual descriptions before treating it as genuinely
+  different — a level-ladder pair is one role, not two.
+
+{% if has_coaching %}
+### Work authorization screen
+
+Applies when `criteria.md`'s "Work authorization" section says they need
+sponsorship or an E-Verify employer. Judge from what the posting says; never
+state immigration rules or fees as fact in a note.
+
+- **Skip** (log in `reviewed_postings.jsonl` as `rejected`, reason
+  `work authorization: "<the posting's words>"`) when the posting says it
+  won't sponsor, requires authorization to work without sponsorship now or in
+  the future, requires US citizenship or a security clearance, or restricts
+  export-controlled work to citizens or permanent residents.
+- **Red flag, skip** (reason `red flag: asks the candidate to pay for
+  sponsorship`) when the posting asks the candidate to pay sponsorship or legal
+  costs.
+- **Not stated**: still a candidate; end the notes line with "Sponsorship not
+  stated; ask early."
+- **Worth noting** in the notes line: the posting says it sponsors; the
+  employer is a university or a nonprofit research organization ("may be
+  exempt from the H-1B lottery; confirm"); for STEM OPT, whether E-Verify
+  participation is stated.
+- If their risk comfort is low, or a layoff would put their status on a clock,
+  weigh stability when tiering: note company size or stage when the posting
+  shows it.
+
+{% endif %}
+### Overflow backlog
+
+When the {{ scout_candidates_cap }}-candidate cap is hit mid-run (or a fresh
+search phase turns up more solid matches than remaining budget allows), do
+**not** discard the extra candidates and do **not** insert them into
+`{{ entity_plural }}` either — that would blow past the review-volume cap
+the number exists to protect. Instead:
+
+1. Finish drafting each overflow candidate fully (same as a normal
+   candidate — see Step 4) so no research work is wasted.
+2. Append each as one JSON line to
+   `{{ config_dir_name }}/overflow_backlog.jsonl` (append-only; one
+   candidate object per line, same shape as the INSERT in Step 5 minus the
+   SQL).
+3. Note the overflow count in the run summary and in `scout_runs`.
+
+At the **start** of every run, before doing any fresh searching: read
+`{{ config_dir_name }}/overflow_backlog.jsonl` if it's non-empty, and
+insert backlog entries (oldest first) as `{{ queued_stage }}` rows up to
+that run's remaining budget ({{ scout_candidates_cap }}, or
+{{ scout_candidates_target }} if you want to leave headroom for fresh finds
+— use judgment). Remove drained entries from the file by rewriting it
+without them. Only do fresh searching once the backlog is empty or the cap
+is hit by backlog entries alone.
+
+### On hitting the hard cap
+
+- Send a push notification if the `PushNotification` tool is available in
+  this session (it usually is on a scheduled run) — you should know the
+  supply is exceeding the review cap without having to check.
+- Always state it plainly in the final chat summary regardless.
+- Do not treat a capped run as a problem to fix by raising the cap
+  yourself — that's your call to make outside this skill. Just report it.
+
+## Inputs (read fresh every run)
+
+- `{{ config_dir_name }}/criteria.md` — the constraints and dealbreakers that
+  define a good match. If this file still has unfilled placeholders, proceed
+  but be conservative about what counts as a match, and mention in the
+  summary that criteria.md needs filling in.
+- `{{ config_dir_name }}/search_terms.md` — the search terms{% if uses_web %} and site list{% endif %}
+  to use. Placeholder lines like "_(term 1)_" mean it hasn't been filled in:
+  say so in the summary and fall back to what `criteria.md` and the profile imply.
+{% if uses_web %}
+- `{{ config_dir_name }}/rotation_state.json` — `{term_index, source_index}`.
+  Used only for web-search terms: read it, compute this run's slice (see
+  Budget table, unless it's "all"), and at the end of the run write back the
+  new indices (advance by however many were covered, wrapping around each
+  list's length).
+{% endif %}
+{% if uses_boards %}
+- `{{ config_dir_name }}/watch_companies.txt` — companies to check directly
+  every run (one per line, `#` lines ignored).
+- `{{ config_dir_name }}/known_boards.json` — cache of companies whose job
+  board has been found (or looked for and not found). The tools maintain it;
+  don't hand-edit unless a hit is wrong.
+{% endif %}
+{% if artifact_enabled %}
+- A profile/background doc — check `{{ config_dir_name }}/profile.md`
+  first, then any PDF/doc file already sitting in that folder before
+  assuming there isn't one (people often drop in a resume under its own
+  name rather than renaming it). Only stop and tell the user to add one if
+  the folder genuinely has nothing usable.
+{% endif %}
+- `{{ config_dir_name }}/reviewed_postings.jsonl`, if present — every
+  listing/posting URL any past run has actually fetched and evaluated
+  (candidate or not). Skip fetching any URL already in this file rather
+  than re-reviewing it — cheaper than even the dedup-set check, since it
+  avoids the fetch entirely, not just the insert. The helper tools already
+  hide these.
+
+## Step 1 — drain the backlog{% if artifact_enabled %} and fulfill draft requests{% endif %}
+
+
+See "Overflow backlog" above. Do this before any fresh searching.
+{% if artifact_enabled %}
+
+Also check for explicit requests first — you can click "Request
+{{ artifact_label }}" on any {{ queued_stage | tojson }} row from the
+dashboard, which sets `{{ artifact_field_prefix }}_requested = true`:
+
+```sql
+SELECT id, {{ primary_field }}, {{ secondary_field }}, source_link FROM {{ entity_plural }}
+WHERE current_stage = {{ queued_stage | sqlstr }} AND {{ artifact_field_prefix }}_requested = true AND {{ artifact_field_prefix }}_draft IS NULL;
+```
+
+Draft these via the {{ artifact_slug }} skill regardless of `match_tier` or
+draft scope — these exist because the automatic
+`{{ artifact_field_prefix }}_needed` detection missed one you actually want.
+This doesn't count against the run's search budget; it's not new research.
+{% endif %}
+
+## Step 2 — build the dedup set
+
+Query the tracker so nothing gets suggested twice:
+
+```sql
+SELECT {{ primary_field }}, {{ secondary_field }}, source_link FROM {{ entity_plural }};
+```
+
+Skip any candidate that already has *any* row (any stage, all of it) unless
+it's a genuinely different, clearly distinct {{ entity_singular }} from the
+same source (use judgment — don't re-suggest the same thing under a
+slightly different title). Also skip anything already sitting in
+`overflow_backlog.jsonl`.
+
+**Cooldown for stale sources.** Scan `reviewed_postings.jsonl` for companies
+(or sources) with **2 or more `"rejected"` entries whose reason says
+stale/closed/404/expired within the last 30 days**. Treat those as cooling
+down for this run: if one turns up again, don't fetch it — log it as
+`verdict: "skipped"` with a `reason` noting the cooldown. Two hits, not one,
+is the threshold (a single stale hit is often just cache lag). The cooldown
+expires on its own 30 days after the most recent hit, so recompute it from the
+log each run rather than keeping a separate list.
+
+## Step 3 — search (within budget)
+
+{{ scout_subagents_per_run }} subagent(s), not a fan-out, cover every enabled
+source below. Fetch a posting's full text only for candidates that look like
+plausible matches from the title/snippet first (don't fetch everything
+indiscriminately — that's what burns the fetch budget fast), skip anything
+already in `reviewed_postings.jsonl`, filter against the dedup set and
+`criteria.md`, and **stop as soon as the early-exit trigger fires**
+({{ scout_candidates_target }} A-tier candidates) — don't keep going through the
+rest of the sources just because they're there.
+{% if job_sources %}
+
+### The helper tools
+
+Run these from the project root with `python3`, **always written out in full
+exactly as in the examples below** (`python3 {{ tools }}/<tool>.py ...`). Don't
+put the path in a shell variable or build the command in a loop: permission
+rules match the command as written, so a variable gets it blocked, both in
+the unattended daily run and as extra prompts for the person. Likewise run
+database commands as `psql -d {{ db_name }} ...`. Each prints **one JSON object
+per line**; notes and errors go to stderr. They already hide postings in
+`reviewed_postings.jsonl` and companies that already have a tracker row
+(add `--all` to see them anyway). If a tool exits non-zero, say which source
+was unavailable in the summary and carry on with the others — don't retry in
+a loop.
+
+Every tool takes the same filters — build them from `search_terms.md`,
+`criteria.md` and the profile, not from guesses:
+
+- `--include "staff,senior backend"` — keep titles matching ANY item (all
+  words in an item must appear).
+- `--exclude "intern,manager"` — drop titles matching ANY item.
+- `--location "remote,new york"` — keep locations matching ANY item;
+  `remote` matches roles that are actually remote.
+- `--limit 40` — cap how many come back (default 100).
+
+The tools are only fetchers and keyword filters. **You** decide fit: read the
+posting against `criteria.md` before anything becomes a candidate.
+
+**`posting_link` must be the specific posting's own URL** (the `url` field),
+never a company's general careers page or a search-results page.
+{% endif %}
+{% if uses_boards %}
+
+### Company job boards (Greenhouse, Ashby)
+
+Many companies publish open roles through Greenhouse or Ashby, both of which
+have public APIs that need no login. This is the cheapest, most reliable
+source: use the live board, not a cached search snippet.
+
+```
+python3 {{ tools }}/boards.py sweep --include "..." --exclude "..." --location "..."
+python3 {{ tools }}/boards.py jobs "Company Name" --include "..."
+python3 {{ tools }}/boards.py lookup "Company Name" ["Another Co" ...]
+python3 {{ tools }}/boards.py describe --ats greenhouse --slug SLUG --id ID
+```
+
+1. **`sweep`** checks every company already in `known_boards.json` plus every
+   name in `watch_companies.txt`, in one pass. Start here.
+2. **`lookup "Company"`** finds a company's board from its name and caches the
+   result. It tries a handful of likely names on each service, and **never
+   guesses silently**: a Greenhouse hit is only accepted if the board's own
+   name matches, and an Ashby hit is marked `"verified": false` because Ashby
+   returns no company name — open one of its job URLs and confirm it really is
+   that company before relying on it. A miss lists exactly which names were
+   tried and is remembered for 30 days (`--refresh` to retry).
+3. **`jobs "Company"`** lists one company's open roles, filtered.
+4. **`describe`** prints one posting's full text, using the `ref` from a
+   result (`--ats`, `--slug`, `--id`). It counts against the full-fetch cap.
+   If it exits 3 the posting was taken down: log it as rejected (stale).
+
+Where do new company names come from? From the user (`watch_companies.txt`),
+from companies named in `criteria.md` or the profile{% if uses_web %}, and from web search{% endif %}.
+Don't invent companies. Add a company to `watch_companies.txt` only if the
+user asks.
+{% endif %}
+{% if uses_yc %}
+
+### Y Combinator startup jobs
+
+```
+python3 {{ tools }}/yc.py --role software-engineer --locations remote,new-york --include "..." --location "..."
+```
+
+Reads YC's public listing pages. `--role` takes one or more of
+`software-engineer, designer, product-manager, recruiting-hr, sales-manager,
+marketing, support, operations, science`; `--locations` takes
+`remote, san-francisco, new-york, los-angeles, seattle, austin, chicago,
+india`. Each page only lists the ~40 newest postings, so combine the roles and
+locations that fit `criteria.md` to widen coverage. Internships are skipped
+unless you pass `--internships`. If YC changes its page format the tool says
+so and exits 2 — report the source as unavailable that day.
+{% endif %}
+{% if uses_hn %}
+
+### Hacker News "Who is hiring?"
+
+```
+python3 {{ tools }}/hn.py --include "..." --location "..."      # newest monthly thread
+python3 {{ tools }}/hn.py --month 2026-08 --include "..."       # an earlier month
+```
+
+Each top-level comment in the monthly thread is one posting, written by the
+company itself. `--include` / `--exclude` search the whole comment, not just a
+title. Results include the `header` line, the first part of the `text`, any
+`emails` found, and `"outreach": true` when the comment gives an email address
+or invites direct contact. A posting's own `url` is its comment link. Company
+and title are best-effort guesses from the comment's first line — read the
+`header` yourself. Read `text` (and open the comment link if you need more)
+before deciding.
+{% endif %}
+{% if uses_web %}
+
+### Web search
+
+Use web search for the terms in `search_terms.md`, this run's slice of them
+per the Budget table. Search results are often stale: when a result names a
+company, check its **live** job board{% if uses_boards %} with `boards.py lookup` /
+`jobs`{% endif %} instead of trusting a cached snippet, and skip anything already
+in `reviewed_postings.jsonl`. If web search is unavailable at the start of a
+run, don't stall — carry on with the other sources.
+{% endif %}
+{% if scout_outreach_mode %}
+
+### Outreach-signal detection (applies to every source)
+
+Some postings invite a message to a real person instead of a form. This is a
+tag, not a bypass: the posting must still clear `criteria.md` normally. Watch
+for it while reading a posting you were already going to read:
+
+1. **Direct-outreach language:** "email us at…", "reach out to [name]
+   directly", "skip the form", "no recruiter", "we read every application
+   ourselves".
+2. **A personal or team email address** in the posting (Hacker News results
+   set `"outreach": true` and list `emails` for you).
+3. **A non-standard posting page** (a custom careers page or plain form) is
+   only corroborating evidence alongside #1 or #2, never enough on its own.
+
+When it fires on a genuine candidate:
+- Prefix `notes` with `[Direct outreach]` before the usual one-line rationale.
+- Append `" (direct outreach)"` to `found_via`.
+- Pass the discovered contact (name and/or email) to the
+  {{ artifact_slug }} skill so it uses its **Direct outreach mode**.
+{% endif %}
+
+### Logging
+
+For each posting actually fetched (whether it became a candidate or not),
+append one line to `{{ config_dir_name }}/reviewed_postings.jsonl`: `{url,
+{{ primary_field }}, {{ secondary_field }}, verdict, reason, reviewed_at, found_via}`
+where `verdict` is `"queued"`, `"backlog"`, `"rejected"`, or `"skipped"`
+(cooldown — nothing was fetched). Two rules matter:
+
+- **`url` is required on every `"rejected"` entry** — a rejected entry with
+  no URL can never stop a future run from re-fetching the same dead posting.
+- A one-line `reason` is required for rejected/skipped entries, and
+  `found_via` should name the source or search term, so a later run can see
+  which sources are actually productive.
+
+For each surviving candidate, capture: {{ primary_label | lower }}, {{ secondary_label | lower }}, location,
+{% if has_value %}{{ value_label | lower }} (if disclosed), {% endif %}{% if has_category %}{{ category_label | lower }}, {% endif %}source URL, a short summary, tier (A or B — see Match
+tiers), and{% if artifact_enabled %} **explicit language about whether
+{{ artifact_label | lower }} is required, optional, or not mentioned at
+all**{% else %} anything else worth flagging{% endif %}.
+
+
+## Step 4 — assess each candidate{% if artifact_enabled %} and decide what to draft{% endif %}
+
+
+For each surviving candidate:
+{% if artifact_enabled %}
+- **{{ artifact_label }} needed?** Set `true` if explicitly required, `false`
+  if explicitly optional/not needed, `NULL` if not mentioned at all (don't
+  guess — let the UI show "check source" in that case).
+- **Draft scope for this project: `{{ artifact_scope }}`.**
+{% if artifact_scope == 'none' %}
+  Don't draft anything automatically. Drafts happen only when you click
+  "Request {{ artifact_label }}" on the dashboard (see Step 1).
+{% else %}
+{% if artifact_scope == 'strong' %}
+  Draft only for A-tier candidates (plus explicit requests from Step 1).
+  B-tier candidates are queued without a draft.
+{% else %}
+  Draft for every candidate you queue, A-tier and B-tier.
+{% endif %}
+  Within that scope, skip drafting when `{{ artifact_field_prefix }}_needed` is
+  clearly `false`.
+{% endif %}
+{% endif %}
+- Write a one-line rationale into `notes` explaining why this is a good
+  match (which criteria it hits) — this is what you see on the queue card.
+{% if artifact_enabled and artifact_scope != 'none' %}
+
+Actual drafting happens in Step 5, after the row exists — the
+{{ artifact_slug }} skill writes its output onto the row by id, so the row
+has to be inserted first. Keep the listing/posting text you fetched in Step
+3 close at hand so it can be passed straight through without a re-fetch.
+{% endif %}
+
+## Step 5 — write to the tracker
+
+Up to the run's remaining cap ({{ scout_candidates_cap }} total including
+anything drained from backlog in Step 1):
+
+{% if has_contact %}
+For {{ contact_singular }}-sourced candidates, handle `{{ contact_plural }}`
+the same way manual entry does (insert if new, reuse if it already exists).
+For everything else:
+{% endif %}
+
+```sql
+INSERT INTO {{ entity_plural }} (
+    {{ primary_field }}, {{ secondary_field }}, source_type, current_stage, location{% if has_category %}, {{ category_field }}{% endif %}{% if has_value %},
+    {{ value_field_prefix }}_text, {{ value_field_prefix }}_min, {{ value_field_prefix }}_max{% endif %}, source_link, notes,
+    match_tier, found_via
+
+) VALUES (
+    '...', '...', '{{ source_type_options[0] }}', {{ queued_stage | sqlstr }},
+    '...'{% if has_category %}, '...'{% endif %}{% if has_value %}, '...', 0, 0{% endif %}, 'https://...',
+
+    'Matches: ...', 'A', 'search term or source name'
+
+) RETURNING id;
+```
+{% if artifact_enabled and artifact_scope != 'none' %}
+Insert first (without {{ artifact_label | lower }} fields), then call the
+**{{ artifact_slug }} skill** (`.claude/skills/{{ artifact_slug }}/SKILL.md`)
+with the returned `id`, passing it the listing/posting text already fetched
+in Step 3 (don't make it re-fetch) — it writes `{{ artifact_field_prefix }}_draft`
+and `{{ artifact_field_prefix }}_file_path` (a real file under
+`{{ config_dir_name }}/{{ artifact_dir_name }}/`) directly onto that row
+itself, for the candidates your draft scope covers.
+{% endif %}
+
+`found_via` should be the specific search term or source that surfaced the
+candidate — it shows on the queue card.
+
+Beyond the cap: follow the Overflow backlog procedure instead of inserting.
+
+## Step 6 — log the run and summarize
+
+Insert one row into `scout_runs`, listing the sources you actually checked
+(use the names `{{ scout_sources | join('`, `') }}`):
+
+```sql
+INSERT INTO scout_runs (
+    terms_covered, sources_covered, candidates_reviewed,
+    candidates_queued, candidates_from_backlog, cap_hit,
+    candidates_overflow, notes
+) VALUES (
+    ARRAY['term1','term2', ...], ARRAY[{% for s in scout_sources %}'{{ s }}'{% if not loop.last %}, {% endif %}{% endfor %}], 0,
+    0, 0, false, 0, 'anything worth flagging'
+);
+```
+
+Then report back in chat: how many new candidates were queued (and how many
+came from backlog vs. fresh), a one-line list ({{ primary_label | lower }} —
+{{ secondary_label | lower }}{% if artifact_enabled %} — {{ artifact_label | lower }} needed?{% endif %}), which sources ran and any that were
+unavailable, whether the early-exit trigger or the hard cap fired, how many
+postings got added to `reviewed_postings.jsonl` this run, and anything else
+worth flagging (e.g. "criteria.md still has unfilled fields", "N candidates
+skipped as probable duplicates"{% if uses_boards %}, "a company board couldn't be found"{% endif %}).
+
+## The review loop (already built)
+
+{{ queued_stage | tojson }} rows show up at `http://localhost:{{ port }}/queue.html` and
+in the {{ entity_plural_label }} page's {{ queued_stage }} filter. From there
+you open the source, act on it yourself, and click **{{ baseline_stage }}**
+(flips the row to `{{ baseline_stage }}`, trigger logs stage history normally
+from there) or **Dismiss** (flips it to `{{ closed_stages[0] }}`, which also
+keeps it out of future dedup suggestions). Nothing in this skill needs to
+know about that flow — it only ever creates `{{ queued_stage }}` rows.

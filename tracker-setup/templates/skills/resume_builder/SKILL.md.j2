@@ -1,0 +1,90 @@
+{% set who = person_name or "the person" %}
+{% set dir = config_dir_name ~ "/resume" %}
+{% set me = ".claude/skills/resume-builder" %}
+---
+name: resume-builder
+description: Rebuilds {{ who }}'s resume from their current one, their approved profile and their story bank. Proposes clearer, more specific wording section by section for their OK, then, with their consent, has a design step produce a clean one-page PDF. Offer it once the story bank has at least three full entries. Never invents anything and never overwrites their original resume.
+---
+
+# Resume builder
+
+Everything here stays on this computer. The output goes in `{{ dir }}/`; their
+original resume is never changed.
+
+## When to offer it
+
+Once `{{ config_dir_name }}/proof_bank.md` has at least three full entries (not
+only raw notes) and `{{ config_dir_name }}/profile.md` says `Status: APPROVED`.
+Offer it once, in a sentence; if they'd rather wait, don't bring it up again
+unless they ask.
+
+## Steps
+
+1. **Consent.** In three lines: it reads their current resume, profile, story
+   bank and `criteria.md`; it suggests changes section by section for them to
+   accept or edit; it makes a new resume in `{{ dir }}/` and leaves the
+   original alone. Ask whether to go ahead.
+2. **Baseline.** Read their resume (the file used for `profile.md`), the
+   approved `profile.md`, `proof_bank.md`, the Roles and "What matters most"
+   sections of `criteria.md`, and `{{ me }}/phrasing_guide.md`. The guide shows
+   patterns with invented examples; never reuse an example's facts or wording.
+3. **Plan.** Tell them in three to five lines what you'd change and why, aimed
+   at the roles in `criteria.md`. For example: the summary doesn't name what
+   they actually build; several bullets start with "responsible for"; their
+   strongest story-bank result isn't on the page yet.
+4. **Section by section**: summary first, then each role from most recent,
+   then skills, projects, education. For each, show **before → after**.
+   - "After" uses only facts from their resume, profile, story bank or what
+     they tell you now.
+   - If a bullet needs a number they haven't given, ask ("Do you know roughly
+     how many?"). If they don't know, write the result without one. Never
+     fill one in.
+   - Every role needs its real job title. If you don't know it, ask; never
+     put a description ("first and only analyst") where the title goes.
+   - If they prefer their own wording, keep it. It's their resume.
+   - Coach the same way as `search-coach`: one question at a time, say why,
+     no empty praise, no blunt verdicts.
+   - US resumes leave out photos, date of birth, marital status and similar
+     personal details. If theirs has them, suggest removing them and say why.
+     Work authorization isn't on the resume unless they ask for it.
+5. **Save** the approved content to `{{ dir }}/resume_content.md` (plain
+   Markdown: header, summary, roles with bullets, skills, projects,
+   education). Mark with `**…**` the few result numbers to emphasize. This file
+   is the source of truth for every later change.
+6. **Color.** Black text on white with one accent color for the name, the rule
+   under it and the section headings. Offer these, or a color of their own:
+   - Deep navy `#1F3A5F`: classic, safe anywhere
+   - Jade `#1F6F5C`: calm and distinctive
+   - Oxblood `#7A2631`: warm and confident
+   - Slate teal `#2C5F6E`: modern and understated
+   - Plum `#5A3470`: distinctive but still formal
+   - Copper `#8C4A22`: warm, stands out in a pile
+
+   A color of their own has to be dark enough to read as small text on white
+   (contrast 4.5:1 or more). If it isn't, suggest a darker shade of the same color.
+7. **Design step**, with their OK. Start a subagent (the Agent tool) so the
+   page-building work stays out of this conversation, and give it these
+   instructions (if subagents aren't available, do the same steps yourself):
+   - Copy `{{ me }}/resume_template.html` to `{{ dir }}/resume.html` and set `--accent` to the chosen color.
+   - Fill it from `{{ dir }}/resume_content.md` exactly: no rewording, no
+     additions, no dropped facts. Bold only the numbers marked `**…**`.
+     Remove sections they don't have.
+   - Keep one column, real text, and no images, icons or tables, so
+     applicant tracking systems can read it.
+   - Fit one page: tighten spacing first. If it still doesn't fit, report
+     which section overflows instead of cutting content.
+   - Then run: `bash {{ me }}/render_pdf.sh {{ dir }}/resume.html {{ dir }}/<First>_<Last>_Resume.pdf`
+8. **Check** the PDF: read it back and confirm it's one page, the text is
+   selectable, and nothing is cut off. If `render_pdf.sh` found no browser,
+   tell them to open `resume.html`, choose Print, then Save as PDF with
+   headers and footers off.
+9. **Hand over**: tell them where the PDF is, and ask them to read every line
+   before they send it. They're the one vouching for it.
+
+Later changes: edit `{{ dir }}/resume_content.md` with them, then repeat steps 7 and 8.
+
+## Rules
+
+- Never invent or inflate employers, titles, dates, numbers, tools or degrees.
+- Never overwrite or delete their original resume.
+- Nothing is uploaded anywhere: no resume sites, no online converters.
