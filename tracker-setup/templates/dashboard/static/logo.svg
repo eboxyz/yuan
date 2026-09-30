@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><title>Yuan: coin on a red cord</title>
+<path d="M64 4 V26" stroke="#E76F51" stroke-width="7" stroke-linecap="round"/>
+<circle cx="64" cy="60" r="38" fill="#2D6A4F"/>
+<circle cx="64" cy="60" r="30.5" fill="none" stroke="#95D4B3" stroke-width="2.5"/>
+<rect x="52" y="48" width="24" height="24" rx="3" fill="#FAF8F5"/>
+<path d="M64 46 V74" stroke="#E76F51" stroke-width="7"/>
+<path d="M64 98 V106" stroke="#E76F51" stroke-width="7"/>
+<circle cx="64" cy="109" r="6" fill="#E76F51"/>
+<path d="M60 113 L55 124 M68 113 L73 124" stroke="#E76F51" stroke-width="4.5" stroke-linecap="round"/>
+</svg>

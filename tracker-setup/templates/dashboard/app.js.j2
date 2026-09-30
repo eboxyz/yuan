@@ -89,7 +89,7 @@ function stageChipHtml(stage, extraClasses) {
 // Deterministic per-{{ entity_singular }} emoji/avatar so cards have
 // personality without guessing real associations we don't actually know.
 const EMOJI_POOL = ['💼','🚀','🌱','⚙️','💡','🎯','🧩','🔧','📊','🛠️','🔬','💳','🏥','🧠','🌐','📦','🔋','🧭','🪄','🔭'];
-const AVATAR_BG = ['bg-secondary-container','bg-tertiary-fixed','bg-primary-fixed','bg-surface-container-highest','bg-error-container','bg-tertiary-fixed-dim'];
+const AVATAR_BG = ['bg-secondary-container','bg-tertiary-fixed','bg-primary-fixed','bg-surface-container-highest','bg-primary-fixed-dim','bg-tertiary-fixed-dim'];
 function hashStr(s) {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;

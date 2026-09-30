@@ -233,11 +233,13 @@ the plural entity name from your config (for a job search: `applications`).
 The dashboard loads nothing from outside. Its stylesheet is compiled once
 from the templates (`dev/dashboard-css/build.sh`, Tailwind v3 with the forms and
 container-queries plugins; `--check` reports a stale build), and its fonts
-(Plus Jakarta Sans, Quicksand, and a Material Symbols subset of the icons in
+(Plus Jakarta Sans and a Material Symbols subset of the icons in
 use plus a set for other domains) are bundled with their licences
 (`dev/dashboard-css/fonts.py`). Both land in
 `tracker-setup/templates/dashboard/static/` and are copied into every generated
-`dashboard/`. The server sends a Content-Security-Policy that allows only its
+`dashboard/`. Colours are the Yuan palette (jade, with cinnabar for things that
+need your attention and for offers); every text/background pair used for stage
+chips and buttons is 6.4:1 or better. The server sends a Content-Security-Policy that allows only its
 own files and connections. If you add an icon the subset doesn't include,
 re-run `fonts.py`.
 

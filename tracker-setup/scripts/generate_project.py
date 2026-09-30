@@ -33,12 +33,14 @@ TEMPLATES_DIR = SKILL_DIR / "templates"
 # STAGE_CHIP map. Cycled across stages by role so every generated project
 # gets a coherent, non-clashing set of chip colors without hand-authoring
 # one pair per literal stage name.
-QUEUED_PAIR = ("bg-secondary-container", "text-on-secondary-container")
-BASELINE_PAIR = ("bg-primary-container", "text-on-primary-container")
-SUCCESS_PAIR = ("bg-tertiary-fixed-dim", "text-on-tertiary-fixed")
+# Yuan palette: queued = blush seal (waiting for you), baseline = jade, in progress =
+# mint / light jade, success = cinnabar seal, closed = neutral. All 6.4:1 or better.
+QUEUED_PAIR = ("bg-tertiary-fixed", "text-on-tertiary-fixed-variant")
+BASELINE_PAIR = ("bg-primary-container", "text-on-primary")
+SUCCESS_PAIR = ("bg-tertiary-container", "text-on-tertiary")
 IN_PROGRESS_PAIRS = [
-    ("bg-secondary-container", "text-on-secondary-container"),
-    ("bg-tertiary-container", "text-on-tertiary-container"),
+    ("bg-secondary-container", "text-on-secondary-fixed"),
+    ("bg-primary-fixed", "text-on-primary-fixed"),
 ]
 CLOSED_PAIRS = [
     ("bg-surface-container-highest", "text-on-surface-variant"),
