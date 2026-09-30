@@ -421,6 +421,10 @@ STATIC_FILES = [
     ("skills/scout_agent/tools/hn.py", lambda c: f"{TOOLS_OUT(c)}/hn.py", lambda c: "hn" in c["job_sources"]),
     ("skills/scout_agent/tools/yc.py", lambda c: f"{TOOLS_OUT(c)}/yc.py", lambda c: "yc" in c["job_sources"]),
     ("hooks/checkin.py", lambda c: ".claude/hooks/checkin.py", lambda c: c["has_coaching"]),
+    # The dashboard's styles, fonts and icons, so it loads nothing from outside (dev/dashboard-css builds them).
+    *[(f"dashboard/static/{p.relative_to(TEMPLATES_DIR / 'dashboard/static').as_posix()}",
+       (lambda rel: lambda c: f"dashboard/{rel}")(p.relative_to(TEMPLATES_DIR / "dashboard/static").as_posix()), lambda c: True)
+      for p in sorted((TEMPLATES_DIR / "dashboard/static").rglob("*")) if p.is_file()],
     ("skills/resume_builder/phrasing_guide.md", lambda c: ".claude/skills/resume-builder/phrasing_guide.md", lambda c: c["has_coaching"] and c["artifact_enabled"]),
     ("skills/resume_builder/resume_template.html", lambda c: ".claude/skills/resume-builder/resume_template.html", lambda c: c["has_coaching"] and c["artifact_enabled"]),
     ("skills/resume_builder/render_pdf.sh", lambda c: ".claude/skills/resume-builder/render_pdf.sh", lambda c: c["has_coaching"] and c["artifact_enabled"]),

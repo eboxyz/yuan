@@ -80,7 +80,8 @@ CREATE TABLE {{ entity_singular }}_notes (
     {{ entity_singular }}_id  INTEGER NOT NULL REFERENCES {{ entity_plural }}(id) ON DELETE CASCADE,
     note            TEXT NOT NULL,
     stage_at_time   TEXT,       -- the stage it was in when the note was written
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    edited_at       TIMESTAMPTZ           -- set when the note's text is changed
 );
 CREATE INDEX {{ entity_singular }}_notes_by_{{ entity_singular }} ON {{ entity_singular }}_notes ({{ entity_singular }}_id, created_at DESC);
 

@@ -170,7 +170,8 @@ invented examples only.
 
 `applications` holds one row per opportunity; `application_notes` is the running notes log (named after your entity, e.g. `listing_notes`); `stage_history` is appended
 automatically by a trigger whenever `current_stage` changes, so it is never
-edited by hand. `scout_runs` logs each scout run's volume and cap hits.
+edited by hand. Notes can be edited and deleted from the dashboard's detail
+drawer; an edited note shows "edited". `scout_runs` logs each scout run's volume and cap hits.
 
 ## The scout agent
 
@@ -218,13 +219,27 @@ the plural entity name from your config (for a job search: `applications`).
 | `GET /api/<things>` | All rows, newest first (with the contact's name if enabled) | always |
 | `POST /api/<things>/{id}/set-stage` | Body `{"stage": "..."}`. Must be one of the configured stages (else 400). Stage history is recorded by a database trigger. | always |
 | `POST /api/<things>/{id}/schedule` | Body `{"next_step": "...", "next_step_date": "YYYY-MM-DD"}`. Send both as `null` to clear. | always |
-| `GET/POST /api/<things>/{id}/notes` | Running notes for one row. Each note records the stage it was written in (`stage_at_time`). Notes are add-only for now. | always |
+| `GET/POST /api/<things>/{id}/notes` | Running notes for one row. Each note records the stage it was written in (`stage_at_time`). | always |
+| `PUT/DELETE /api/<things>/{id}/notes/{note_id}` | Edit (body `{"note": "..."}`, sets `edited_at`, keeps `stage_at_time`) or delete one note. Only notes that belong to that row (else 404). | always |
 | `GET /api/upcoming` | Rows with a next-step date, soonest first | always |
 | `GET /api/stats/funnel`, `timeline`, `source-types`, `time-in-stage`, `insights` | Numbers behind the Overview page | always |
 | `GET /api/stats/value` | Value axis (e.g. compensation) for rows that have one | `has_value` |
 | `GET /api/stats/<contacts>` | Rows per contact (e.g. recruiter) | `has_contact` |
 | `GET /api/queue`, `POST .../mark-committed`, `POST .../dismiss` | Candidates the scout found, and moving them on | `has_scout_agent` |
 | `POST .../request-<artifact>`, `POST .../reveal-<artifact>`, `GET .../download-<artifact>` | Ask for a draft, show it in your file manager, or download it. Downloads only serve files inside the drafts folder. | scout + drafting |
+
+## Dashboard assets
+
+The dashboard loads nothing from outside. Its stylesheet is compiled once
+from the templates (`dev/dashboard-css/build.sh`, Tailwind v3 with the forms and
+container-queries plugins; `--check` reports a stale build), and its fonts
+(Plus Jakarta Sans, Quicksand, and a Material Symbols subset of the icons in
+use plus a set for other domains) are bundled with their licences
+(`dev/dashboard-css/fonts.py`). Both land in
+`tracker-setup/templates/dashboard/static/` and are copied into every generated
+`dashboard/`. The server sends a Content-Security-Policy that allows only its
+own files and connections. If you add an icon the subset doesn't include,
+re-run `fonts.py`.
 
 ## Local security
 

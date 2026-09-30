@@ -15,11 +15,11 @@ async function getJSON(path) {
   return res.json();
 }
 
-async function postJSON(path, body) {
+async function sendJSON(method, path, body) {
   const res = await fetch(path, {
-    method: 'POST',
+    method,
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body || {}),
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!res.ok) {
     let detail = String(res.status);
@@ -28,6 +28,9 @@ async function postJSON(path, body) {
   }
   return res.json();
 }
+const postJSON = (path, body) => sendJSON('POST', path, body || {});
+const putJSON = (path, body) => sendJSON('PUT', path, body);
+const deleteJSON = (path) => sendJSON('DELETE', path);
 {% if has_value %}
 
 function fmtMoney(n) {

@@ -224,8 +224,9 @@ accounts for you.
       { name: `${folder}/intake.json`, data: JSON.stringify(intake, null, 2) + "\n" },
     ];
     if (resume) files.push({ name: `${folder}/${resumeName}`, data: resume.bytes });
-    for (const [path, text] of Object.entries(bundle.files)) {
-      files.push({ name: `${folder}/.claude/skills/tracker-setup/${path}`, data: text,
+    for (const [path, content] of Object.entries(bundle.files)) {
+      const data = typeof content === "string" ? content : Uint8Array.from(atob(content.b64), (c) => c.charCodeAt(0));
+      files.push({ name: `${folder}/.claude/skills/tracker-setup/${path}`, data,
         mode: /\.(sh|py)$/.test(path) ? 0o100755 : 0o100644 });
     }
     return { intake, errors, warnings, folder, zip: makeZip(files, date) };

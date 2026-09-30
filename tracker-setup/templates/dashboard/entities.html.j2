@@ -224,11 +224,54 @@ async function loadNotes() {
   const forId = openId;
   const notes = await getJSON(`/api/{{ entity_plural }}/${forId}/notes`);
   if (forId !== openId) return;
+  currentNotes = notes;
   $('noteList').innerHTML = notes.length ? notes.map(n => `
-    <li class="bg-white rounded-lg border border-surface-container-high p-3">
+    <li class="bg-white rounded-lg border border-surface-container-high p-3" data-note-id="${n.id}">
       <p class="text-sm whitespace-pre-wrap">${escapeHtml(n.note)}</p>
-      <p class="text-xs text-on-surface-variant mt-2">${n.stage_at_time ? escapeHtml(n.stage_at_time) + ' · ' : ''}${relativeTime(n.created_at)}</p>
+      <div class="flex items-center justify-between gap-2 mt-2">
+        <p class="text-xs text-on-surface-variant">${n.stage_at_time ? escapeHtml(n.stage_at_time) + ' · ' : ''}${relativeTime(n.created_at)}${n.edited_at ? ' · edited' : ''}</p>
+        <span class="flex gap-3 text-xs">
+          <button type="button" data-note-action="edit" class="text-primary underline">Edit</button>
+          <button type="button" data-note-action="delete" class="text-error underline">Delete</button>
+        </span>
+      </div>
     </li>`).join('') : '<li class="text-sm text-on-surface-variant">No notes yet.</li>';
+}
+
+let currentNotes = [];
+function editNote(li) {
+  const n = currentNotes.find(x => x.id === Number(li.dataset.noteId));
+  if (!n) return;
+  li.innerHTML = `
+    <label class="sr-only" for="noteEdit${n.id}">Edit note</label>
+    <textarea id="noteEdit${n.id}" rows="3" maxlength="4000" class="w-full rounded-lg border-2 border-surface-container-high bg-white px-3 py-2 text-sm"></textarea>
+    <span class="flex gap-3 mt-2">
+      <button type="button" data-note-action="save" class="rounded-full bg-primary text-on-primary font-label-caps text-label-caps px-4 py-1">Save</button>
+      <button type="button" data-note-action="cancel" class="text-sm text-on-surface-variant underline">Cancel</button>
+    </span>`;
+  const ta = li.querySelector('textarea');
+  ta.value = n.note;
+  ta.focus();
+}
+async function noteAction(e) {
+  const btn = e.target.closest('[data-note-action]');
+  if (!btn) return;
+  const li = btn.closest('[data-note-id]'), action = btn.dataset.noteAction;
+  const url = `/api/{{ entity_plural }}/${openId}/notes/${li.dataset.noteId}`;
+  if (action === 'edit') return editNote(li);
+  if (action === 'cancel') return loadNotes();
+  await drawerAction(async () => {
+    if (action === 'save') {
+      const text = li.querySelector('textarea').value.trim();
+      if (!text) throw new Error("A note can't be empty. Delete it instead.");
+      await putJSON(url, { note: text });
+      await loadNotes();
+    } else if (action === 'delete') {
+      if (!btn.dataset.armed) { btn.dataset.armed = '1'; btn.textContent = 'Delete for good?'; return; }
+      await deleteJSON(url);
+      await loadNotes();
+    }
+  });
 }
 
 function openDrawer(id) {
@@ -281,6 +324,7 @@ function wireDrawer() {
     await refreshItems();
     renderDrawer();
   }));
+  $('noteList').addEventListener('click', noteAction);
   $('noteAdd').addEventListener('click', () => drawerAction(async () => {
     const text = $('noteText').value.trim();
     if (!text) throw new Error('Write something first.');
